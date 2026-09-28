@@ -1,0 +1,25 @@
+/* Phase 6 — Analysis additions.
+   Append these rules to frontend/app/globals.css. */
+.analysis-grid{margin-top:18px}
+.analysis-card{min-height:245px;transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease}
+.analysis-card:hover{transform:translateY(-2px);box-shadow:var(--shadow,0 10px 26px rgba(58,46,34,.08));border-color:var(--accent)}
+.analysis-card-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.analysis-icon{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;background:var(--surface-active);color:var(--accent);border:1px solid var(--border)}
+.analysis-card-title{font-family:Georgia,serif;font-size:20px;font-weight:500;color:var(--text-primary,var(--ink));margin:5px 0 14px}
+.analysis-card-body{min-height:105px}
+.analysis-highlight{font-family:Georgia,serif;font-size:24px;color:var(--text-primary,var(--ink));line-height:1.2}
+.analysis-meta{margin-top:9px;font-size:12px;color:var(--text-secondary,var(--muted));line-height:1.45}
+.analysis-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.analysis-stat-grid div{padding:9px 10px;border:1px solid var(--border,var(--line));border-radius:8px;background:var(--surface-hover,var(--paper))}
+.analysis-stat-grid span{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary,var(--muted));margin-bottom:4px}
+.analysis-stat-grid strong{font-variant-numeric:tabular-nums;font-size:16px;color:var(--text-primary,var(--ink))}
+.analysis-levels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}
+.analysis-levels span{font-size:11px;color:var(--text-secondary,var(--muted))}
+.analysis-levels strong{display:block;margin-top:3px;color:var(--text-primary,var(--ink));font-variant-numeric:tabular-nums}
+.analysis-empty{display:grid;gap:8px;padding:12px;border-radius:9px;border:1px dashed var(--border,var(--line));background:var(--surface-hover,var(--paper))}
+.analysis-empty strong{font-size:13px;color:var(--text-primary,var(--ink))}
+.analysis-empty span{font-size:12px;line-height:1.45;color:var(--text-secondary,var(--muted))}
+.analysis-message{margin-bottom:16px}
+.analysis-footnote{margin-top:18px}
+@media(max-width:1080px){.analysis-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.analysis-grid{grid-template-columns:1fr}.analysis-levels{grid-template-columns:1fr}}

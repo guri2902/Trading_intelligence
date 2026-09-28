@@ -1,0 +1,5 @@
+# Phase 16E — register research UI endpoints in backend/app/main.py
+
+from .api.research_ui import router as research_ui_router
+
+app.include_router(research_ui_router)

@@ -1,0 +1,26 @@
+/* Phase 4 — Scanner additions.
+   Append these rules to frontend/app/globals.css. */
+.scanner-hero{display:flex;justify-content:space-between;gap:20px;align-items:flex-end}
+.scanner-controls{justify-content:flex-end;align-items:flex-end}
+.scanner-label{display:grid;gap:6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-secondary)}
+.scanner-select{height:40px;min-width:126px;padding:0 34px 0 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-primary);font:inherit}
+.scanner-select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.scanner-table-card{margin-top:16px;padding:0;overflow:hidden}
+.scanner-table-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 18px;border-bottom:1px solid var(--border)}
+.table-wrap{overflow-x:auto}
+.scanner-table{margin:0}
+.scanner-table tbody tr{transition:background .14s ease,transform .14s ease}
+.scanner-table tbody tr:hover{background:var(--surface-hover)}
+.scanner-table tbody tr:last-child td{border-bottom:0}
+.scanner-table td{vertical-align:middle}
+.scanner-subtext{font-size:11px;color:var(--text-tertiary);margin-top:3px}
+.scanner-score{display:grid;gap:6px;min-width:120px}
+.numeric{font-variant-numeric:tabular-nums}
+.scanner-scorebar{height:5px;background:var(--border);border-radius:999px;overflow:hidden}
+.scanner-scorebar span{display:block;height:100%;border-radius:999px;background:var(--accent);transition:width .14s ease}
+.scanner-note{margin:12px 18px 18px}
+.scanner-message{margin-top:16px}
+@media(max-width:900px){
+  .scanner-hero,.scanner-table-head{align-items:flex-start;flex-direction:column}
+  .scanner-controls{justify-content:flex-start}
+}

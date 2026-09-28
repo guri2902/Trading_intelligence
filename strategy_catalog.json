@@ -1,0 +1,60 @@
+{
+  "source": "existing deterministic StrategyEngine implementations",
+  "note": "Implemented strategies only. No profitability claim; backtest/OOS/robustness gates remain authoritative.",
+  "strategies": [
+    {
+      "id": "builtin-vwap-pullback",
+      "name": "VWAP Pullback",
+      "engine_strategy": "VWAP_PULLBACK",
+      "description": "Trend-aligned pullback toward VWAP with ATR-based invalidation and targets."
+    },
+    {
+      "id": "builtin-ema-continuation",
+      "name": "EMA Continuation",
+      "engine_strategy": "EMA_CONTINUATION",
+      "description": "EMA 9/20/50 alignment with price confirmation and ATR-based risk."
+    },
+    {
+      "id": "builtin-orb",
+      "name": "Opening Range Breakout",
+      "engine_strategy": "ORB",
+      "description": "Break of the opening range with structural confirmation."
+    },
+    {
+      "id": "builtin-orb-retest",
+      "name": "Opening Range Retest",
+      "engine_strategy": "ORB_RETEST",
+      "description": "Opening-range breakout followed by a valid retest of the broken edge."
+    },
+    {
+      "id": "builtin-sr-rejection",
+      "name": "Support/Resistance Rejection",
+      "engine_strategy": "SR_REJECTION",
+      "description": "Rejection from a meaningful support/resistance zone with ATR risk."
+    },
+    {
+      "id": "builtin-range-fade",
+      "name": "Range Fade",
+      "engine_strategy": "RANGE_FADE",
+      "description": "Mean-reversion setup near validated range boundaries."
+    },
+    {
+      "id": "builtin-momentum",
+      "name": "Momentum Continuation",
+      "engine_strategy": "MOMENTUM_CONTINUATION",
+      "description": "Trend + momentum + VWAP alignment with ATR-based targets."
+    },
+    {
+      "id": "builtin-volatility-breakout",
+      "name": "Volatility Breakout",
+      "engine_strategy": "VOLATILITY_BREAKOUT",
+      "description": "Structural breakout/breakdown with volatility expansion and participation filters."
+    },
+    {
+      "id": "builtin-option-directional",
+      "name": "Option Directional",
+      "engine_strategy": "OPTION_DIRECTIONAL",
+      "description": "Uses the existing options engine to rank CE/PE direction, then requires underlying confirmation."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+# Phase 16G — consolidated router registration checklist
+#
+# backend/app/main.py should contain these imports:
+#
+# from .api.paper_ui import router as paper_ui_router
+# from .api.market_data_ui import router as market_data_ui_router
+# from .api.research_ui import router as research_ui_router
+# from .api.history_settings_ui import router as history_settings_ui_router
+#
+# and these registrations:
+#
+# app.include_router(paper_ui_router)
+# app.include_router(market_data_ui_router)
+# app.include_router(research_ui_router)
+# app.include_router(history_settings_ui_router)
+#
+# Also keep all pre-existing project routers.

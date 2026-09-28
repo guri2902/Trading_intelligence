@@ -1,0 +1,1688 @@
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\backtest\costs.py | 1013 bytes =====
+from __future__ import annotations
+
+from .models import CostConfig
+
+
+def apply_slippage(price: float, direction: str, slippage_bps: float) -> float:
+    """
+    Buy/long fills are worsened upward; sell/short fills worsened downward.
+    """
+    factor = slippage_bps / 10_000.0
+    if direction in {"LONG", "BUY"}:
+        return price * (1.0 + factor)
+    if direction in {"SHORT", "SELL"}:
+        return price * (1.0 - factor)
+    return price
+
+
+def transaction_cost(
+    *,
+    entry_value: float,
+    exit_value: float,
+    config: CostConfig,
+) -> float:
+    turnover = abs(entry_value) + abs(exit_value)
+
+    brokerage = 2.0 * config.brokerage_per_order
+    exchange_cost = turnover * config.exchange_txn_rate
+    sebi = turnover * config.sebi_rate
+    stamp = abs(entry_value) * config.stamp_duty_rate
+    stt = abs(exit_value) * config.stt_rate
+
+    taxable_base = brokerage + exchange_cost + sebi
+    gst = taxable_base * config.gst_rate
+
+    return brokerage + exchange_cost + sebi + stamp + stt + gst
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\backtest\data.py | 1373 bytes =====
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Iterable
+
+
+def validate_historical_rows(
+    rows: list[dict],
+    *,
+    timestamp_key: str = "timestamp",
+) -> list[dict]:
+    """
+    Produces a chronological, duplicate-free copy.
+
+    Backtests must operate on monotonically increasing historical data.
+    """
+    normalized = []
+
+    for row in rows:
+        ts = row[timestamp_key]
+        if isinstance(ts, str):
+            ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        normalized.append((ts, row))
+
+    normalized.sort(key=lambda x: x[0])
+
+    output = []
+    seen = set()
+
+    for ts, row in normalized:
+        if ts in seen:
+            raise ValueError(f"Duplicate historical timestamp: {ts}")
+        seen.add(ts)
+        output.append(row)
+
+    if len(output) < 2:
+        raise ValueError("At least two historical rows are required")
+
+    return output
+
+
+def ensure_no_future_data(
+    *,
+    signal_time: datetime,
+    decision_time: datetime,
+) -> None:
+    # A historical decision may only use information available at or before
+    # the signal timestamp. The execution timestamp may legitimately be later.
+    if decision_time < signal_time:
+        raise ValueError(
+            f"Chronology violation: execution/decision time={decision_time} "
+            f"< signal time={signal_time}"
+        )
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\backtest\engine.py | 15476 bytes =====
+from __future__ import annotations
+
+from datetime import datetime
+
+from .costs import transaction_cost
+from .data import ensure_no_future_data, validate_historical_rows
+from .execution import simulate_fill
+from .metrics import compute_metrics
+from .models import (
+    BacktestConfig,
+    BacktestResult,
+    EquityPoint,
+    TradeRecord,
+)
+
+
+class BacktestEngine:
+    """
+    Deterministic bar-based strategy backtester.
+
+    Expected signal callback contract:
+      signal_fn(history_rows) -> dict | None
+
+    A returned signal can contain:
+      {
+        "strategy": "EMA_CONTINUATION",
+        "direction": "LONG" | "SHORT",
+        "entry": float,
+        "invalidation": float,
+        "target_1": float,
+        "target_2": float,
+      }
+
+    history_rows contains only bars available at the decision timestamp.
+    """
+
+    @staticmethod
+    def _position_quantity(
+        *,
+        entry: float,
+        stop: float,
+        capital: float,
+        config: BacktestConfig,
+    ) -> float:
+        """
+        Size the position from configured account risk.
+
+        risk_budget = current capital * risk_per_trade_pct
+        risk_per_unit = abs(entry - stop)
+
+        config.quantity acts as a hard maximum quantity.
+        """
+        risk_per_unit = abs(entry - stop)
+
+        if risk_per_unit <= 0:
+            return 0.0
+
+        risk_budget = (
+            capital
+            * config.risk_per_trade_pct
+            / 100.0
+        )
+
+        if risk_budget <= 0:
+            return 0.0
+
+        risk_quantity = risk_budget / risk_per_unit
+
+        return min(
+            risk_quantity,
+            config.quantity,
+        )
+
+    def run(
+        self,
+        rows: list[dict],
+        signal_fn,
+        *,
+        strategy_name: str,
+        config: BacktestConfig | None = None,
+        mode: str = "UNDERLYING",
+        timestamp_key: str = "timestamp",
+        execution_price_key: str = "open",
+        high_key: str = "high",
+        low_key: str = "low",
+        close_key: str = "close",
+        trade_start_index: int = 0,
+    ) -> BacktestResult:
+
+        config = config or BacktestConfig()
+
+        rows = validate_historical_rows(
+            rows,
+            timestamp_key=timestamp_key,
+        )
+        if trade_start_index < 0 or trade_start_index >= len(rows):
+            raise ValueError(
+                f"trade_start_index must be between 0 and {len(rows) - 1}"
+            )
+        if config.max_concurrent_positions != 1:
+            raise ValueError(
+                "Current BacktestEngine supports exactly one concurrent position."
+            )
+
+        warnings: list[str] = []
+
+        if mode == "OPTIONS":
+            warnings.append(
+                "Options mode requires actual historical option prices; "
+                "underlying bars alone must not be used as synthetic option prices."
+            )
+
+        capital = config.initial_capital
+        peak_equity = capital
+        realized = 0.0
+
+        trades: list[TradeRecord] = []
+        equity_curve: list[EquityPoint] = []
+
+        open_trade: dict | None = None
+        trade_id = 0
+
+        for i in range(len(rows)):
+            row = rows[i]
+
+            ts = row[timestamp_key]
+
+            if isinstance(ts, str):
+                ts = datetime.fromisoformat(
+                    ts.replace("Z", "+00:00")
+                )
+
+            # ---------------------------------------------------------
+            # Mark current equity before making a new decision.
+            # ---------------------------------------------------------
+            mark_equity = capital
+
+            if open_trade:
+                current_close = float(row[close_key])
+                entry = open_trade["fill"].price
+                qty = open_trade["fill"].quantity
+                direction = open_trade["signal"]["direction"]
+
+                unrealized = (
+                    (current_close - entry) * qty
+                    if direction == "LONG"
+                    else (entry - current_close) * qty
+                )
+
+                mark_equity += unrealized
+
+            peak_equity = max(
+                peak_equity,
+                mark_equity,
+            )
+
+            dd = max(
+                peak_equity - mark_equity,
+                0.0,
+            )
+
+            dd_pct = (
+                dd / peak_equity * 100
+                if peak_equity
+                else 0.0
+            )
+
+            equity_curve.append(
+                EquityPoint(
+                    timestamp=ts,
+                    equity=mark_equity,
+                    realized_pnl=realized,
+                    drawdown=dd,
+                    drawdown_pct=dd_pct,
+                )
+            )
+
+            # ---------------------------------------------------------
+            # Manage an existing trade.
+            #
+            # IMPORTANT:
+            # Do NOT evaluate SL/TP on the entry bar.
+            # Exit evaluation begins strictly after entry_index.
+            # ---------------------------------------------------------
+            if open_trade and i > open_trade["entry_index"]:
+                signal = open_trade["signal"]
+
+                direction = signal["direction"]
+                entry = open_trade["fill"].price
+                qty = open_trade["fill"].quantity
+
+                high = float(row[high_key])
+                low = float(row[low_key])
+                close = float(row[close_key])
+
+                exit_price = None
+                reason = None
+
+                if direction == "LONG":
+                    stop = float(signal["invalidation"])
+                    target = float(
+                        signal["target_2"]
+                        if signal.get("target_2") is not None
+                        else signal["target_1"]
+                    )
+
+                    if low <= stop and high >= target:
+                        exit_price = stop
+                        reason = (
+                            "STOP_AND_TARGET_SAME_BAR_STOP_FIRST"
+                        )
+
+                    elif low <= stop:
+                        exit_price = stop
+                        reason = "STOP"
+
+                    elif high >= target:
+                        exit_price = target
+                        reason = "TARGET"
+
+                    elif i == len(rows) - 1:
+                        exit_price = close
+                        reason = "END_OF_DATA"
+
+                elif direction == "SHORT":
+                    stop = float(signal["invalidation"])
+                    target = float(
+                        signal["target_2"]
+                        if signal.get("target_2") is not None
+                        else signal["target_1"]
+                    )
+
+                    if high >= stop and low <= target:
+                        exit_price = stop
+                        reason = (
+                            "STOP_AND_TARGET_SAME_BAR_STOP_FIRST"
+                        )
+
+                    elif high >= stop:
+                        exit_price = stop
+                        reason = "STOP"
+
+                    elif low <= target:
+                        exit_price = target
+                        reason = "TARGET"
+
+                    elif i == len(rows) - 1:
+                        exit_price = close
+                        reason = "END_OF_DATA"
+
+                if exit_price is not None:
+                    exit_fill = simulate_fill(
+                        requested_price=exit_price,
+                        direction=(
+                            "SHORT"
+                            if direction == "LONG"
+                            else "LONG"
+                        ),
+                        quantity=qty,
+                        slippage_bps=config.costs.slippage_bps,
+                        partial_fill_ratio=(
+                            config.costs.partial_fill_ratio
+                        ),
+                    )
+
+                    gross = (
+                        (exit_fill.price - entry) * qty
+                        if direction == "LONG"
+                        else (entry - exit_fill.price) * qty
+                    )
+
+                    costs = transaction_cost(
+                        entry_value=entry * qty,
+                        exit_value=exit_fill.price * qty,
+                        config=config.costs,
+                    )
+
+                    net = gross - costs
+
+                    realized += net
+                    capital = (
+                        config.initial_capital
+                        + realized
+                    )
+
+                    trade = TradeRecord(
+                        trade_id=open_trade["trade_id"],
+                        strategy=strategy_name,
+                        direction=direction,
+                        entry_time=open_trade["entry_time"],
+                        exit_time=ts,
+                        requested_entry=open_trade[
+                            "requested_entry"
+                        ],
+                        filled_entry=entry,
+                        exit_price=exit_fill.price,
+                        quantity=qty,
+                        gross_pnl=gross,
+                        total_cost=costs,
+                        net_pnl=net,
+                        max_favorable_excursion=open_trade[
+                            "mfe"
+                        ],
+                        max_adverse_excursion=open_trade[
+                            "mae"
+                        ],
+                        exit_reason=reason,
+                        duration_bars=(
+                            i - open_trade["entry_index"]
+                        ),
+                        win=net > 0,
+                    )
+
+                    trades.append(trade)
+                    open_trade = None
+
+                    continue
+
+                # -----------------------------------------------------
+                # MFE / MAE
+                # -----------------------------------------------------
+                if direction == "LONG":
+                    open_trade["mfe"] = max(
+                        open_trade["mfe"],
+                        (high - entry) * qty,
+                    )
+
+                    open_trade["mae"] = min(
+                        open_trade["mae"],
+                        (low - entry) * qty,
+                    )
+
+                else:
+                    open_trade["mfe"] = max(
+                        open_trade["mfe"],
+                        (entry - low) * qty,
+                    )
+
+                    open_trade["mae"] = min(
+                        open_trade["mae"],
+                        (entry - high) * qty,
+                    )
+
+            # ---------------------------------------------------------
+            # Only make a new decision when flat.
+            # ---------------------------------------------------------
+            if open_trade is not None:
+                continue
+
+            if i < trade_start_index:
+                continue
+                    
+            if i >= len(rows) - 1:
+                continue
+
+            # ---------------------------------------------------------
+            # Signal sees history only through decision bar i.
+            # ---------------------------------------------------------
+            history = rows[: i + 1]
+
+            signal = signal_fn(history)
+
+            if not signal:
+                continue
+
+            direction = signal.get("direction")
+
+            if direction not in {"LONG", "SHORT"}:
+                continue
+
+            if (
+                direction == "SHORT"
+                and not config.allow_short
+            ):
+                continue
+
+            if signal.get("invalidation") is None:
+                continue
+
+            signal_ts = ts
+
+            # ---------------------------------------------------------
+            # Latency-aware execution.
+            #
+            # latency_bars=0:
+            #   execute on next bar
+            #
+            # latency_bars=1:
+            #   skip one additional bar
+            # ---------------------------------------------------------
+            execution_index = (
+                i
+                + 1
+                + config.costs.latency_bars
+            )
+
+            if execution_index >= len(rows):
+                continue
+
+            next_row = rows[execution_index]
+
+            execution_ts = next_row[timestamp_key]
+
+            if isinstance(execution_ts, str):
+                execution_ts = datetime.fromisoformat(
+                    execution_ts.replace("Z", "+00:00")
+                )
+
+            ensure_no_future_data(
+                signal_time=signal_ts,
+                decision_time=execution_ts,
+            )
+
+            requested_entry = float(
+                signal.get(
+                    "entry",
+                    next_row[execution_price_key],
+                )
+            )
+
+            # ---------------------------------------------------------
+            # Preview the execution price with one unit.
+            #
+            # Slippage is price-based, not quantity-based, so this
+            # gives the actual slipped entry used for risk sizing.
+            # ---------------------------------------------------------
+            requested_execution_price = float(
+                next_row[execution_price_key]
+            )
+
+            preview_fill = simulate_fill(
+                requested_price=requested_execution_price,
+                direction=direction,
+                quantity=1.0,
+                slippage_bps=config.costs.slippage_bps,
+                partial_fill_ratio=1.0,
+            )
+
+            actual_entry_price = preview_fill.price
+
+            quantity = self._position_quantity(
+                entry=actual_entry_price,
+                stop=float(signal["invalidation"]),
+                capital=capital,
+                config=config,
+            )
+
+            if quantity <= 0:
+                continue
+
+            # ---------------------------------------------------------
+            # Actual entry fill.
+            # ---------------------------------------------------------
+            entry_fill = simulate_fill(
+                requested_price=requested_execution_price,
+                direction=direction,
+                quantity=quantity,
+                slippage_bps=config.costs.slippage_bps,
+                partial_fill_ratio=config.costs.partial_fill_ratio,
+            )
+
+            if entry_fill.quantity <= 0:
+                continue
+
+            trade_id += 1
+
+            open_trade = {
+                "trade_id": trade_id,
+                "entry_index": execution_index,
+                "entry_time": execution_ts,
+                "requested_entry": requested_entry,
+                "fill": entry_fill,
+                "signal": signal,
+                "mfe": 0.0,
+                "mae": 0.0,
+            }
+
+        # -------------------------------------------------------------
+        # Metrics
+        # -------------------------------------------------------------
+        metrics = compute_metrics(
+            initial_capital=config.initial_capital,
+            trades=trades,
+            equity=equity_curve,
+        )
+
+        return BacktestResult(
+            strategy=strategy_name,
+            mode=mode,
+            metrics=metrics,
+            trades=trades,
+            equity_curve=equity_curve,
+            warnings=warnings,
+        )
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\backtest\execution.py | 731 bytes =====
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .costs import apply_slippage
+
+
+@dataclass
+class Fill:
+    price: float
+    quantity: float
+
+
+def simulate_fill(
+    *,
+    requested_price: float,
+    direction: str,
+    quantity: float,
+    slippage_bps: float,
+    partial_fill_ratio: float,
+) -> Fill:
+    if quantity <= 0:
+        raise ValueError("quantity must be positive")
+    if not 0 < partial_fill_ratio <= 1:
+        raise ValueError("partial_fill_ratio must be in (0,1]")
+
+    filled_qty = quantity * partial_fill_ratio
+
+    return Fill(
+        price=apply_slippage(
+            requested_price,
+            direction,
+            slippage_bps,
+        ),
+        quantity=filled_qty,
+    )
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\backtest\metrics.py | 5723 bytes =====
+from __future__ import annotations
+
+import math
+import statistics
+
+from .models import BacktestMetrics, EquityPoint, TradeRecord
+
+
+def _returns(equity: list[EquityPoint]) -> list[float]:
+    if len(equity) < 2:
+        return []
+
+    out: list[float] = []
+
+    for a, b in zip(equity, equity[1:]):
+        if a.equity > 0:
+            out.append(b.equity / a.equity - 1.0)
+
+    return out
+
+
+def sharpe_ratio(equity: list[EquityPoint]) -> float | None:
+    r = _returns(equity)
+
+    if len(r) < 2:
+        return None
+
+    std = statistics.stdev(r)
+
+    if std == 0:
+        return None
+
+    return statistics.mean(r) / std * math.sqrt(len(r))
+
+
+def sortino_ratio(equity: list[EquityPoint]) -> float | None:
+    r = _returns(equity)
+
+    if len(r) < 2:
+        return None
+
+    downside = [x for x in r if x < 0]
+
+    if not downside:
+        return None
+
+    downside_dev = math.sqrt(
+        sum(x * x for x in downside) / len(downside)
+    )
+
+    if downside_dev == 0:
+        return None
+
+    return statistics.mean(r) / downside_dev * math.sqrt(len(r))
+
+
+def compute_metrics(
+    *,
+    initial_capital: float,
+    trades: list[TradeRecord],
+    equity: list[EquityPoint],
+) -> BacktestMetrics:
+
+    # ---------------------------------------------------------
+    # REALIZED TRADE P&L
+    # ---------------------------------------------------------
+    # Trade records are the authoritative source for realized
+    # strategy performance. This prevents final equity from
+    # becoming inconsistent with gross profit/loss and expectancy.
+    trade_pnls = [float(t.net_pnl) for t in trades]
+
+    wins = [pnl for pnl in trade_pnls if pnl > 0]
+    losses = [pnl for pnl in trade_pnls if pnl < 0]
+
+    gross_profit = sum(wins)
+    gross_loss = abs(sum(losses))
+
+    total = len(trade_pnls)
+    winning = len(wins)
+    losing = len(losses)
+
+    # Net realized P&L comes directly from the completed trades.
+    net_profit = sum(trade_pnls)
+
+    # Final realized equity is therefore deterministic.
+    final_equity = initial_capital + net_profit
+
+    # ---------------------------------------------------------
+    # BASIC PERFORMANCE
+    # ---------------------------------------------------------
+    return_pct = (
+        (net_profit / initial_capital) * 100.0
+        if initial_capital > 0
+        else 0.0
+    )
+
+    win_rate_pct = (
+        (winning / total) * 100.0
+        if total
+        else 0.0
+    )
+
+    profit_factor = (
+        gross_profit / gross_loss
+        if gross_loss > 0
+        else None
+    )
+
+    # Mean realized P&L per completed trade.
+    expectancy = (
+        net_profit / total
+        if total
+        else 0.0
+    )
+
+    # ---------------------------------------------------------
+    # DRAWDOWN
+    # ---------------------------------------------------------
+    # Drawdown remains based on the equity curve because it is
+    # a path-dependent risk metric.
+    drawdowns = [
+        float(point.drawdown)
+        for point in equity
+    ]
+
+    drawdown_pcts = [
+        float(point.drawdown_pct)
+        for point in equity
+    ]
+
+    max_drawdown = (
+        max(drawdowns)
+        if drawdowns
+        else 0.0
+    )
+
+    max_drawdown_pct = (
+        max(drawdown_pcts)
+        if drawdown_pcts
+        else 0.0
+    )
+
+    # ---------------------------------------------------------
+    # CONSISTENCY CHECK
+    # ---------------------------------------------------------
+    # The metrics must reconcile:
+    #
+    # final_equity = initial_capital + net_profit
+    #
+    # and
+    #
+    # net_profit = gross_profit + sum(losses)
+    #
+    # This is intentionally calculated from the trade records
+    # rather than trusting the final equity-curve value.
+    expected_net_profit = gross_profit - gross_loss
+
+    # Floating-point tolerance for fractional quantities/slippage.
+    if not math.isclose(
+        net_profit,
+        expected_net_profit,
+        rel_tol=1e-9,
+        abs_tol=1e-8,
+    ):
+        raise ValueError(
+            "Backtest P&L inconsistency: "
+            f"net_profit={net_profit}, "
+            f"gross_profit={gross_profit}, "
+            f"gross_loss={gross_loss}"
+        )
+
+    # ---------------------------------------------------------
+    # RISK-ADJUSTED METRICS
+    # ---------------------------------------------------------
+    sharpe = sharpe_ratio(equity)
+    sortino = sortino_ratio(equity)
+
+    # ---------------------------------------------------------
+    # WIN / LOSS STATISTICS
+    # ---------------------------------------------------------
+    average_win = (
+        gross_profit / winning
+        if winning
+        else 0.0
+    )
+
+    average_loss = (
+        -(gross_loss / losing)
+        if losing
+        else 0.0
+    )
+
+    largest_win = (
+        max(wins)
+        if wins
+        else 0.0
+    )
+
+    largest_loss = (
+        min(losses)
+        if losses
+        else 0.0
+    )
+
+    # ---------------------------------------------------------
+    # FINAL MODEL
+    # ---------------------------------------------------------
+    return BacktestMetrics(
+        initial_capital=initial_capital,
+        final_equity=final_equity,
+        net_profit=net_profit,
+        return_pct=return_pct,
+        total_trades=total,
+        winning_trades=winning,
+        losing_trades=losing,
+        win_rate_pct=win_rate_pct,
+        gross_profit=gross_profit,
+        gross_loss=gross_loss,
+        profit_factor=profit_factor,
+        expectancy_per_trade=expectancy,
+        max_drawdown=max_drawdown,
+        max_drawdown_pct=max_drawdown_pct,
+        sharpe=sharpe,
+        sortino=sortino,
+        average_win=average_win,
+        average_loss=average_loss,
+        largest_win=largest_win,
+        largest_loss=largest_loss,
+    )
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\backtest\models.py | 2256 bytes =====
+from __future__ import annotations
+
+from datetime import datetime
+from pydantic import BaseModel, Field
+
+
+class CostConfig(BaseModel):
+    brokerage_per_order: float = 0.0
+    stt_rate: float = 0.0
+    exchange_txn_rate: float = 0.0
+    gst_rate: float = 0.0
+    sebi_rate: float = 0.0
+    stamp_duty_rate: float = 0.0
+    slippage_bps: float = 0.0
+    latency_bars: int = Field(default=0, ge=0)
+    partial_fill_ratio: float = Field(default=1.0, gt=0, le=1.0)
+
+
+class BacktestConfig(BaseModel):
+    initial_capital: float = Field(default=10000.0, gt=0)
+    risk_per_trade_pct: float = Field(default=1.0, gt=0)
+    max_concurrent_positions: int = Field(default=1, ge=1)
+    quantity: float = Field(default=1.0, gt=0)
+    allow_short: bool = True
+    costs: CostConfig = Field(default_factory=CostConfig)
+
+
+class TradeRecord(BaseModel):
+    trade_id: int
+    strategy: str
+    direction: str
+    entry_time: datetime | str
+    exit_time: datetime | str | None = None
+    requested_entry: float
+    filled_entry: float | None = None
+    exit_price: float | None = None
+    quantity: float
+    gross_pnl: float = 0.0
+    total_cost: float = 0.0
+    net_pnl: float = 0.0
+    max_favorable_excursion: float = 0.0
+    max_adverse_excursion: float = 0.0
+    exit_reason: str | None = None
+    duration_bars: int = 0
+    win: bool | None = None
+
+
+class EquityPoint(BaseModel):
+    timestamp: datetime | str
+    equity: float
+    realized_pnl: float
+    drawdown: float
+    drawdown_pct: float
+
+
+class BacktestMetrics(BaseModel):
+    initial_capital: float
+    final_equity: float
+    net_profit: float
+    return_pct: float
+    total_trades: int
+    winning_trades: int
+    losing_trades: int
+    win_rate_pct: float
+    gross_profit: float
+    gross_loss: float
+    profit_factor: float | None
+    expectancy_per_trade: float
+    max_drawdown: float
+    max_drawdown_pct: float
+    sharpe: float | None
+    sortino: float | None
+    average_win: float
+    average_loss: float
+    largest_win: float
+    largest_loss: float
+
+
+class BacktestResult(BaseModel):
+    strategy: str
+    mode: str  # UNDERLYING / OPTIONS
+    metrics: BacktestMetrics
+    trades: list[TradeRecord]
+    equity_curve: list[EquityPoint]
+    warnings: list[str] = Field(default_factory=list)
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\backtest\strategy_adapter.py | 1445 bytes =====
+from __future__ import annotations
+
+from ..strategies.models import StrategyContext
+from ..strategies.service import StrategyService
+
+
+class StrategyBacktestAdapter:
+    """
+    Connects Phase 9 strategy logic to Phase 10 without letting the backtester
+    directly call future candles.
+
+    The adapter calculates features/structure outside this class in production.
+    This first adapter accepts precomputed `state_fn(history)`.
+    """
+
+    def __init__(self, state_fn, preferred_strategy: str | None = None):
+        self.state_fn = state_fn
+        self.preferred_strategy = preferred_strategy
+        self.service = StrategyService()
+
+    def signal(self, history: list[dict]) -> dict | None:
+        context = self.state_fn(history)
+        result = self.service.evaluate(context)
+
+        setup = result.best_setup
+
+        if self.preferred_strategy:
+            matches = [
+                x for x in result.setups
+                if x.strategy == self.preferred_strategy
+                and x.state == "TRIGGERED"
+            ]
+            setup = matches[0] if matches else None
+
+        if setup is None or setup.state != "TRIGGERED":
+            return None
+
+        return {
+            "strategy": setup.strategy,
+            "direction": setup.direction,
+            "entry": setup.entry,
+            "invalidation": setup.invalidation,
+            "target_1": setup.target_1,
+            "target_2": setup.target_2,
+        }
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\backtest\__init__.py | 1 bytes =====
+
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\options_backtest\engine.py | 10834 bytes =====
+from __future__ import annotations
+
+from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime
+
+from ..backtest.models import CostConfig
+from ..backtest.costs import transaction_cost
+from .models import HistoricalOptionBar, OptionsBacktestConfig, OptionsBacktestResult, OptionsTradeRecord
+
+
+@dataclass(frozen=True)
+class _OpenTrade:
+    trade_id: int
+    contract_key: str
+    entry_index: int
+    entry_time: datetime
+    entry_price: float
+    quantity: int
+    option_type: str
+    strike: float
+    expiry: str
+
+
+class HistoricalOptionsBacktestEngine:
+    """Backtest only on real historical option bars; never synthesizes option prices."""
+
+    def _validate(self, rows: list[HistoricalOptionBar]) -> list[HistoricalOptionBar]:
+        if not rows:
+            raise ValueError("NO_HISTORICAL_OPTION_DATA")
+        ordered = sorted(rows, key=lambda r: r.timestamp)
+        if ordered != rows:
+            raise ValueError("OPTION_DATA_MUST_BE_CHRONOLOGICALLY_SORTED")
+        seen = set()
+        for row in rows:
+            key = (row.contract_key, row.timestamp)
+            if key in seen:
+                raise ValueError("DUPLICATE_OPTION_BAR")
+            seen.add(key)
+            if row.high < max(row.open, row.close) or row.low > min(row.open, row.close):
+                raise ValueError("INVALID_OPTION_OHLC")
+            if row.bid is not None and row.ask is not None and row.bid > row.ask:
+                raise ValueError("BID_ASK_CROSSED")
+        return rows
+
+    @staticmethod
+    def _costs(entry: float, exit: float, qty: int, config: OptionsBacktestConfig) -> float:
+        cc = CostConfig(
+            brokerage_per_order=config.brokerage_per_order,
+            exchange_txn_rate=config.exchange_txn_rate,
+            sebi_rate=config.sebi_rate,
+            gst_rate=config.gst_rate,
+            stamp_duty_rate=config.stamp_duty_rate,
+            stt_rate=config.stt_sell_rate,
+        )
+        return transaction_cost(entry_value=entry * qty, exit_value=exit * qty, config=cc)
+
+    @staticmethod
+    def _buy_fill(row: HistoricalOptionBar, slippage_bps: float) -> float:
+        reference = row.ask if row.ask is not None else row.open
+        return reference * (1 + slippage_bps / 10000)
+
+    @staticmethod
+    def _sell_fill(row: HistoricalOptionBar, slippage_bps: float) -> float:
+        reference = row.bid if row.bid is not None else row.open
+        return reference * (1 - slippage_bps / 10000)
+
+    def run(self, rows: list[HistoricalOptionBar], signal_fn, *, strategy_name: str, config: OptionsBacktestConfig | None = None) -> OptionsBacktestResult:
+        config = config or OptionsBacktestConfig()
+        rows = self._validate(rows)
+
+        by_time: dict[datetime, list[HistoricalOptionBar]] = defaultdict(list)
+        for row in rows:
+            by_time[row.timestamp].append(row)
+        times = sorted(by_time)
+
+        # Contract rows are retained by (contract_key, timestamp). The signal function
+        # sees only bars strictly before the decision timestamp and can select a real contract.
+        series: dict[str, list[HistoricalOptionBar]] = defaultdict(list)
+        for row in rows:
+            series[row.contract_key].append(row)
+        for values in series.values():
+            values.sort(key=lambda r: r.timestamp)
+
+        index_map = {(r.contract_key, r.timestamp): i for i, r in enumerate(rows)}
+        trades: list[OptionsTradeRecord] = []
+        capital = config.initial_capital
+        equity_points: list[float] = [capital]
+        open_trade: _OpenTrade | None = None
+        trade_id = 0
+        warnings: list[str] = []
+
+        for idx, decision_time in enumerate(times[:-1]):
+            if len(trades) >= config.max_trades:
+                warnings.append("MAX_TRADES_REACHED")
+                break
+
+            if open_trade is not None:
+                # Exit is evaluated on the actual historical bar at/after latency.
+                candidate = None
+                for t in times:
+                    if t <= open_trade.entry_time:
+                        continue
+                    if t not in by_time:
+                        continue
+                    for bar in by_time[t]:
+                        if bar.contract_key == open_trade.contract_key:
+                            candidate = bar
+                            break
+                    if candidate:
+                        break
+                if candidate is not None and candidate.timestamp > decision_time:
+                    # Signal contract may remain open until expiry/end of dataset; default exit at last available close.
+                    if candidate.timestamp == times[-1]:
+                        exit_price = self._sell_fill(candidate, config.slippage_bps)
+                        gross = (exit_price - open_trade.entry_price) * open_trade.quantity
+                        costs = self._costs(open_trade.entry_price, exit_price, open_trade.quantity, config)
+                        net = gross - costs
+                        capital += net
+                        trades.append(OptionsTradeRecord(
+                            trade_id=open_trade.trade_id,
+                            contract_key=open_trade.contract_key,
+                            option_type=open_trade.option_type,
+                            strike=open_trade.strike,
+                            expiry=open_trade.expiry,
+                            entry_time=open_trade.entry_time,
+                            exit_time=candidate.timestamp,
+                            entry_price=round(open_trade.entry_price, 6),
+                            exit_price=round(exit_price, 6),
+                            quantity=open_trade.quantity,
+                            gross_pnl=round(gross, 6),
+                            costs=round(costs, 6),
+                            net_pnl=round(net, 6),
+                            exit_reason="END_OF_DATA",
+                        ))
+                        open_trade = None
+                        equity_points.append(capital)
+                        continue
+
+            if open_trade is not None:
+                continue
+
+            history = [r for r in rows if r.timestamp <= decision_time]
+            if not history:
+                continue
+            snapshot = by_time[decision_time]
+            signal = signal_fn({"timestamp": decision_time, "history": history, "chain": snapshot})
+            if not signal:
+                continue
+            contract_key = signal.get("contract_key")
+            action = signal.get("action", "BUY").upper()
+            if action != "BUY" or not contract_key:
+                continue
+
+            # Locate a real next-bar price for the requested contract.
+            next_bar = None
+            latency_seen = 0
+            for t in times[idx + 1:]:
+                candidates = [r for r in by_time[t] if r.contract_key == contract_key]
+                if not candidates:
+                    continue
+                next_bar = candidates[0]
+                latency_seen += 1
+                if latency_seen >= config.latency_bars:
+                    break
+            if next_bar is None:
+                warnings.append(f"NO_EXECUTION_BAR:{contract_key}")
+                continue
+
+            # Critical no-lookahead guard: execution must be after the decision time.
+            if next_bar.timestamp <= decision_time:
+                raise ValueError("LOOKAHEAD_DETECTED")
+
+            trade_id += 1
+            entry_price = self._buy_fill(next_bar, config.slippage_bps)
+            open_trade = _OpenTrade(
+                trade_id=trade_id,
+                contract_key=contract_key,
+                entry_index=index_map[(next_bar.contract_key, next_bar.timestamp)],
+                entry_time=next_bar.timestamp,
+                entry_price=entry_price,
+                quantity=config.quantity,
+                option_type=next_bar.option_type,
+                strike=next_bar.strike,
+                expiry=next_bar.expiry,
+            )
+            equity_points.append(capital)
+
+        # Force closure if data ended before the loop's last decision.
+        if open_trade is not None:
+            last = next((r for r in reversed(rows) if r.contract_key == open_trade.contract_key), None)
+            if last is None:
+                warnings.append("OPEN_POSITION_WITHOUT_FINAL_BAR")
+            else:
+                exit_price = self._sell_fill(last, config.slippage_bps)
+                gross = (exit_price - open_trade.entry_price) * open_trade.quantity
+                costs = self._costs(open_trade.entry_price, exit_price, open_trade.quantity, config)
+                net = gross - costs
+                capital += net
+                trades.append(OptionsTradeRecord(
+                    trade_id=open_trade.trade_id,
+                    contract_key=open_trade.contract_key,
+                    option_type=open_trade.option_type,
+                    strike=open_trade.strike,
+                    expiry=open_trade.expiry,
+                    entry_time=open_trade.entry_time,
+                    exit_time=last.timestamp,
+                    entry_price=round(open_trade.entry_price, 6),
+                    exit_price=round(exit_price, 6),
+                    quantity=open_trade.quantity,
+                    gross_pnl=round(gross, 6),
+                    costs=round(costs, 6),
+                    net_pnl=round(net, 6),
+                    exit_reason="END_OF_DATA",
+                ))
+
+        net_profit = sum(t.net_pnl for t in trades)
+        wins = [t.net_pnl for t in trades if t.net_pnl > 0]
+        losses = [t.net_pnl for t in trades if t.net_pnl < 0]
+        gross_profit = sum(wins)
+        gross_loss = abs(sum(losses))
+        metrics = {
+            "initial_capital": config.initial_capital,
+            "final_equity": capital,
+            "net_profit": net_profit,
+            "return_pct": net_profit / config.initial_capital * 100,
+            "total_trades": len(trades),
+            "winning_trades": len(wins),
+            "losing_trades": len(losses),
+            "win_rate_pct": len(wins) / len(trades) * 100 if trades else 0.0,
+            "profit_factor": gross_profit / gross_loss if gross_loss else (None if not gross_profit else float("inf")),
+            "max_drawdown": self._max_drawdown(trades, config.initial_capital),
+        }
+        return OptionsBacktestResult(strategy=strategy_name, metrics=metrics, trades=trades, warnings=warnings)
+
+    @staticmethod
+    def _max_drawdown(trades: list[OptionsTradeRecord], initial: float) -> float:
+        equity = initial
+        peak = initial
+        max_dd = 0.0
+        for trade in trades:
+            equity += trade.net_pnl
+            peak = max(peak, equity)
+            max_dd = max(max_dd, peak - equity)
+        return max_dd
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\options_backtest\models.py | 2271 bytes =====
+from __future__ import annotations
+
+from datetime import datetime
+from pydantic import BaseModel, Field, field_validator
+
+
+class HistoricalOptionBar(BaseModel):
+    timestamp: datetime
+    contract_key: str = Field(min_length=1)
+    underlying_symbol: str = Field(min_length=1)
+    expiry: str = Field(min_length=8)
+    strike: float = Field(gt=0)
+    option_type: str
+    open: float = Field(gt=0)
+    high: float = Field(gt=0)
+    low: float = Field(gt=0)
+    close: float = Field(gt=0)
+    volume: int | None = Field(default=None, ge=0)
+    open_interest: int | None = Field(default=None, ge=0)
+    bid: float | None = Field(default=None, gt=0)
+    ask: float | None = Field(default=None, gt=0)
+    underlying_close: float | None = Field(default=None, gt=0)
+
+    @field_validator("option_type")
+    @classmethod
+    def validate_option_type(cls, value: str) -> str:
+        value = value.upper()
+        if value not in {"CE", "PE"}:
+            raise ValueError("OPTION_TYPE_MUST_BE_CE_OR_PE")
+        return value
+
+
+class OptionsBacktestConfig(BaseModel):
+    initial_capital: float = Field(default=100000.0, gt=0)
+    quantity: int = Field(default=1, gt=0)
+    slippage_bps: float = Field(default=5.0, ge=0)
+    brokerage_per_order: float = Field(default=20.0, ge=0)
+    exchange_txn_rate: float = Field(default=0.0003553, ge=0)
+    sebi_rate: float = Field(default=0.000001, ge=0)
+    gst_rate: float = Field(default=0.18, ge=0)
+    stamp_duty_rate: float = Field(default=0.00003, ge=0)
+    stt_sell_rate: float = Field(default=0.001, ge=0)
+    latency_bars: int = Field(default=1, ge=1)
+    max_trades: int = Field(default=1000, ge=1)
+
+
+class OptionsTradeRecord(BaseModel):
+    trade_id: int
+    contract_key: str
+    option_type: str
+    strike: float
+    expiry: str
+    entry_time: datetime
+    exit_time: datetime
+    entry_price: float
+    exit_price: float
+    quantity: int
+    gross_pnl: float
+    costs: float
+    net_pnl: float
+    exit_reason: str
+
+
+class OptionsBacktestResult(BaseModel):
+    strategy: str
+    mode: str = "HISTORICAL_OPTIONS"
+    metrics: dict[str, float | int | None]
+    trades: list[OptionsTradeRecord]
+    warnings: list[str] = Field(default_factory=list)
+    no_lookahead: bool = True
+    used_actual_option_prices: bool = True
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\options_backtest\phase22_engine.py | 6550 bytes =====
+from __future__ import annotations
+from collections import defaultdict
+from datetime import datetime
+from .models import HistoricalOptionBar
+from .phase22_models import MultiLegOptionsBacktestConfig, MultiLegOptionsBacktestResult, SpreadTradeRecord, OptionLeg, ExpirySettlement
+from ..backtest.costs import transaction_cost
+from ..backtest.models import CostConfig
+
+class MultiLegOptionsBacktestEngine:
+    def _validate(self, rows: list[HistoricalOptionBar], cfg: MultiLegOptionsBacktestConfig):
+        if not rows: raise ValueError('NO_HISTORICAL_OPTION_DATA')
+        if sorted(rows, key=lambda x:x.timestamp) != rows: raise ValueError('OPTION_DATA_MUST_BE_CHRONOLOGICALLY_SORTED')
+        seen=set()
+        for r in rows:
+            k=(r.contract_key,r.timestamp)
+            if k in seen: raise ValueError('DUPLICATE_OPTION_BAR')
+            seen.add(k)
+            if r.high < max(r.open,r.close) or r.low > min(r.open,r.close): raise ValueError('INVALID_OPTION_OHLC')
+            if r.bid is not None and r.ask is not None and r.bid > r.ask: raise ValueError('BID_ASK_CROSSED')
+            if not cfg.allow_expiry_mismatch and r.expiry and r.timestamp.date().isoformat() > r.expiry:
+                raise ValueError('BAR_AFTER_CONTRACT_EXPIRY')
+        return rows
+
+    @staticmethod
+    def _fill(r, side, slippage_bps):
+        ref=(r.ask if side=='BUY' else r.bid) or r.open
+        return ref*(1+slippage_bps/10000) if side=='BUY' else ref*(1-slippage_bps/10000)
+
+    @staticmethod
+    def _settlement(r):
+        if r.underlying_close is None:
+            return None
+        intrinsic=max(r.underlying_close-r.strike,0.0) if r.option_type=='CE' else max(r.strike-r.underlying_close,0.0)
+        return ExpirySettlement(contract_key=r.contract_key,timestamp=r.timestamp,expiry=r.expiry,strike=r.strike,option_type=r.option_type,underlying_close=r.underlying_close,settlement_price=intrinsic,intrinsic_value=intrinsic)
+
+    def run(self, rows, signal_fn, *, strategy_name, config=None):
+        cfg=config or MultiLegOptionsBacktestConfig(); self._validate(rows,cfg)
+        by_time=defaultdict(list)
+        series=defaultdict(list)
+        for r in rows: by_time[r.timestamp].append(r); series[r.contract_key].append(r)
+        times=sorted(by_time)
+        warnings=[]; settlements=[]
+        for contract, rs in series.items():
+            last=rs[-1]
+            if cfg.auto_expiry_exit and last.timestamp.date().isoformat() >= last.expiry:
+                s=self._settlement(last)
+                if s: settlements.append(s)
+                elif last.timestamp.date().isoformat()==last.expiry: warnings.append(f'MISSING_UNDERLYING_AT_EXPIRY:{contract}')
+        trades=[]; capital=cfg.initial_capital; open_trade=None; tid=0
+        for i,t in enumerate(times[:-1]):
+            if open_trade is not None: continue
+            hist=[r for r in rows if r.timestamp<=t]
+            sig=signal_fn({'timestamp':t,'history':hist,'chain':by_time[t]})
+            if not sig: continue
+            legs_raw=sig.get('legs')
+            if not legs_raw: continue
+            if len(legs_raw)>cfg.max_legs: warnings.append('MAX_LEGS_EXCEEDED'); continue
+            chosen=[]
+            for x in legs_raw:
+                ck=x.get('contract_key'); side=x.get('side','BUY').upper(); qty=int(x.get('quantity',cfg.quantity))
+                if side not in {'BUY','SELL'} or not ck or qty<=0: chosen=[]; warnings.append('INVALID_LEG'); break
+                nb=None
+                seen=0
+                for tt in times[i+1:]:
+                    match=[r for r in by_time[tt] if r.contract_key==ck]
+                    if match:
+                        seen+=1
+                        if seen>=cfg.latency_bars: nb=match[0]; break
+                if nb is None: chosen=[]; warnings.append(f'NO_EXECUTION_BAR:{ck}'); break
+                chosen.append((OptionLeg(contract_key=ck,side=side,quantity=qty),nb))
+            if not chosen: continue
+            tid+=1; entry_time=max(r.timestamp for _,r in chosen); entry_value=0.0
+            for leg,r in chosen:
+                fill=self._fill(r,leg.side,cfg.slippage_bps); entry_value += fill*leg.quantity*(1 if leg.side=='BUY' else -1)
+            open_trade=(tid,chosen,entry_time,entry_value)
+            # deterministic exit: contract expiry settlement when available, otherwise last common timestamp
+            expiry_target=min(r.expiry for _,r in chosen)
+            exit_candidates=[]
+            for leg,r in chosen:
+                rs=series[leg.contract_key]
+                exp=[z for z in rs if z.timestamp.date().isoformat()>=expiry_target]
+                exit_candidates.append(exp[0] if exp else rs[-1])
+            exit_t=max(r.timestamp for r in exit_candidates)
+            exit_value=0.0
+            for leg,r in chosen:
+                settle=next((s for s in settlements if s.contract_key==leg.contract_key),None) if cfg.auto_expiry_exit and r.timestamp.date().isoformat()>=r.expiry else None
+                price=settle.settlement_price if settle else self._fill(r,'SELL' if leg.side=='BUY' else 'BUY',cfg.slippage_bps)
+                exit_value += price*leg.quantity*(1 if leg.side=='SELL' else -1)
+            expiry_exit = any(any(z.timestamp.date().isoformat() >= z.expiry for z in series[leg.contract_key]) for leg, _ in chosen)
+            gross=exit_value-entry_value; cost=transaction_cost(entry_value=abs(entry_value), exit_value=abs(exit_value), config=CostConfig(brokerage_per_order=cfg.brokerage_per_order,exchange_txn_rate=cfg.exchange_txn_rate,sebi_rate=cfg.sebi_rate,gst_rate=cfg.gst_rate,stamp_duty_rate=cfg.stamp_duty_rate,stt_rate=cfg.stt_sell_rate)); net=gross-cost; capital+=net
+            trades.append(SpreadTradeRecord(trade_id=tid,entry_time=entry_time,exit_time=exit_t,legs=[a for a,_ in chosen],entry_value=round(entry_value,6),exit_value=round(exit_value,6),gross_pnl=round(gross,6),costs=round(cost,6),net_pnl=round(net,6),exit_reason='EXPIRY' if expiry_exit else 'END_OF_DATA'))
+            open_trade=None
+        wins=[t.net_pnl for t in trades if t.net_pnl>0]; losses=[t.net_pnl for t in trades if t.net_pnl<0]
+        return MultiLegOptionsBacktestResult(strategy=strategy_name,trades=trades,settlements=settlements,metrics={'initial_capital':cfg.initial_capital,'final_equity':capital,'net_profit':sum(t.net_pnl for t in trades),'total_trades':len(trades),'win_rate_pct':len(wins)/len(trades)*100 if trades else 0.0,'profit_factor':sum(wins)/abs(sum(losses)) if losses else (None if not wins else float('inf'))},warnings=warnings)
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\options_backtest\phase22_models.py | 1319 bytes =====
+from __future__ import annotations
+from datetime import datetime
+from pydantic import BaseModel, Field
+from .models import HistoricalOptionBar, OptionsBacktestConfig
+
+class OptionLeg(BaseModel):
+    contract_key: str = Field(min_length=1)
+    side: str = Field(default='BUY')
+    quantity: int = Field(gt=0)
+
+class ExpirySettlement(BaseModel):
+    contract_key: str
+    timestamp: datetime
+    expiry: str
+    strike: float
+    option_type: str
+    underlying_close: float | None
+    settlement_price: float
+    intrinsic_value: float
+
+class SpreadTradeRecord(BaseModel):
+    trade_id: int
+    entry_time: datetime
+    exit_time: datetime
+    legs: list[OptionLeg]
+    entry_value: float
+    exit_value: float
+    gross_pnl: float
+    costs: float
+    net_pnl: float
+    exit_reason: str
+
+class MultiLegOptionsBacktestConfig(OptionsBacktestConfig):
+    auto_expiry_exit: bool = True
+    allow_expiry_mismatch: bool = False
+    max_legs: int = Field(default=8, ge=1, le=20)
+
+class MultiLegOptionsBacktestResult(BaseModel):
+    strategy: str
+    trades: list[SpreadTradeRecord]
+    settlements: list[ExpirySettlement]
+    metrics: dict[str, float | int | None]
+    warnings: list[str] = Field(default_factory=list)
+    no_lookahead: bool = True
+    used_actual_option_prices: bool = True
+    live_execution: bool = False
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\options_backtest\__init__.py | 258 bytes =====
+from .engine import HistoricalOptionsBacktestEngine
+from .models import HistoricalOptionBar, OptionsBacktestConfig, OptionsBacktestResult
+
+__all__ = ["HistoricalOptionsBacktestEngine", "HistoricalOptionBar", "OptionsBacktestConfig", "OptionsBacktestResult"]
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\backend\app\providers\optionvault.py | 8461 bytes =====
+from __future__ import annotations
+
+import csv
+from datetime import date, datetime, timezone
+from pathlib import Path
+from typing import Any, Iterator
+
+from .base import Candle, MarketDataProvider, ProviderStatus
+
+
+SUPPORTED = {".csv", ".parquet", ".feather"}
+
+
+class OptionVaultProvider(MarketDataProvider):
+    """Adapter for the real OptionVault repository/data layout.
+
+    It discovers actual local files recursively and supports the repository's
+    documented fields such as datetime, OHLC, volume, oi, expiry, strike and side.
+    Missing datasets are reported honestly; no synthetic coverage is generated.
+    """
+
+    name = "optionvault"
+
+    def __init__(self, root_dir: str | None = None) -> None:
+        self.root_dir = Path(root_dir or "data/optionvault").expanduser()
+        self._files_cache: list[Path] | None = None
+
+    @property
+    def exists(self) -> bool:
+        return self.root_dir.exists() and self.root_dir.is_dir()
+
+    def _files(self) -> list[Path]:
+        if self._files_cache is None:
+            if not self.exists:
+                self._files_cache = []
+            else:
+                self._files_cache = sorted(
+                    p for p in self.root_dir.rglob("*")
+                    if p.is_file() and p.suffix.lower() in SUPPORTED
+                )
+        return self._files_cache
+
+    def health(self) -> ProviderStatus:
+        files = self._files()
+        exists = self.exists
+        return ProviderStatus(
+            provider=self.name,
+            available=bool(files),
+            authenticated=False,
+            checked_at=datetime.now(timezone.utc),
+            message=(
+                "OptionVault dataset discovered."
+                if files
+                else f"OptionVault dataset not found or empty: {self.root_dir}"
+            ),
+            metadata={
+                "root": str(self.root_dir),
+                "root_exists": exists,
+                "file_count": len(files),
+                "samples_dir": str(self.root_dir / "samples"),
+                "samples_present": (self.root_dir / "samples").exists(),
+            },
+        )
+
+    def coverage(self) -> dict[str, Any]:
+        files = self._files()
+        categories: dict[str, int] = {}
+        samples: list[str] = []
+        for path in files:
+            rel = path.relative_to(self.root_dir).as_posix()
+            top = rel.split("/", 1)[0] if "/" in rel else "root"
+            categories[top] = categories.get(top, 0) + 1
+            if len(samples) < 25:
+                samples.append(rel)
+        return {
+            "root": str(self.root_dir),
+            "root_exists": self.exists,
+            "file_count": len(files),
+            "categories": categories,
+            "sample_files": samples,
+        }
+
+    def _candidate_files(self, instrument_key: str, *, options: bool = False) -> Iterator[Path]:
+        tokens = [
+            t.strip().upper().replace(" ", "")
+            for t in instrument_key.replace("|", "_").replace("/", "_").split("_")
+            if t.strip()
+        ]
+        primary = tokens[-1] if tokens else instrument_key.upper()
+        for path in self._files():
+            rel = path.as_posix().upper()
+            stem = path.stem.upper().replace(" ", "")
+            if options and "/OPTIONS/" not in rel and "/DERIVATIVES/" not in rel:
+                continue
+            if primary in stem or any(t in stem for t in tokens if len(t) >= 3):
+                yield path
+
+    @staticmethod
+    def _row_value(row: dict[str, Any], *names: str) -> Any:
+        lowered = {str(k).strip().lower(): v for k, v in row.items()}
+        for name in names:
+            if name in lowered:
+                return lowered[name]
+        return None
+
+    @staticmethod
+    def _parse_timestamp(value: Any) -> datetime:
+        if value is None:
+            raise ValueError("Missing timestamp/datetime field")
+        text = str(value).strip().replace("Z", "+00:00")
+        dt = datetime.fromisoformat(text)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+
+    @staticmethod
+    def _read_table(path: Path) -> list[dict[str, Any]]:
+        suffix = path.suffix.lower()
+        if suffix == ".csv":
+            with path.open("r", newline="", encoding="utf-8-sig") as fh:
+                return list(csv.DictReader(fh))
+        try:
+            import pandas as pd  # type: ignore
+        except ImportError as exc:
+            raise RuntimeError(
+                "OptionVault parquet/feather support requires pandas. "
+                "CSV samples work without the optional dependency."
+            ) from exc
+        if suffix == ".parquet":
+            return pd.read_parquet(path).to_dict(orient="records")
+        return pd.read_feather(path).to_dict(orient="records")
+
+    def candles(
+        self,
+        instrument_key,
+        unit,
+        interval,
+        from_date,
+        to_date,
+    ) -> list[Candle]:
+        rows: dict[datetime, Candle] = {}
+        candidates = list(self._candidate_files(instrument_key))
+
+        for path in candidates:
+            for row in self._read_table(path):
+                ts = self._parse_timestamp(
+                    self._row_value(row, "datetime", "timestamp", "date")
+                )
+                if not (from_date <= ts.date() <= to_date):
+                    continue
+                op = self._row_value(row, "open", "o")
+                hi = self._row_value(row, "high", "h")
+                lo = self._row_value(row, "low", "l")
+                cl = self._row_value(row, "close", "c")
+                if None in (op, hi, lo, cl):
+                    continue
+                vol = self._row_value(row, "volume", "v")
+                oi = self._row_value(row, "oi", "open_interest")
+                rows[ts] = Candle(
+                    instrument_key=instrument_key,
+                    timestamp=ts,
+                    open=float(op),
+                    high=float(hi),
+                    low=float(lo),
+                    close=float(cl),
+                    volume=float(vol) if vol not in (None, "") else None,
+                    open_interest=float(oi) if oi not in (None, "") else None,
+                    source=self.name,
+                )
+
+        return sorted(rows.values(), key=lambda x: x.timestamp)
+
+    def option_series(
+        self,
+        symbol: str,
+        *,
+        expiry: date | None = None,
+        strike: float | None = None,
+        side: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+    ) -> list[dict[str, Any]]:
+        """Load actual option market rows when the local OptionVault data exists."""
+        out: list[dict[str, Any]] = []
+        symbol_upper = symbol.upper().replace(" ", "")
+        side_upper = side.upper() if side else None
+
+        for path in self._candidate_files(symbol, options=True):
+            if symbol_upper not in path.stem.upper().replace(" ", ""):
+                continue
+            for row in self._read_table(path):
+                exp_value = self._row_value(row, "expiry", "exp")
+                row_strike = self._row_value(row, "strike", "strike_price")
+                row_side = self._row_value(row, "side", "option_type", "type")
+
+                if expiry is not None and exp_value not in (None, ""):
+                    try:
+                        exp = date.fromisoformat(str(exp_value)[:10])
+                    except ValueError:
+                        exp = None
+                    if exp is not None and exp != expiry:
+                        continue
+                if strike is not None and row_strike not in (None, ""):
+                    if float(row_strike) != float(strike):
+                        continue
+                if side_upper and row_side not in (None, ""):
+                    if str(row_side).upper() != side_upper:
+                        continue
+
+                ts = self._parse_timestamp(self._row_value(row, "datetime", "timestamp", "date"))
+                if from_date and ts.date() < from_date:
+                    continue
+                if to_date and ts.date() > to_date:
+                    continue
+
+                normalized = {str(k).strip().lower(): v for k, v in row.items()}
+                normalized["timestamp"] = ts.isoformat()
+                normalized["source"] = self.name
+                out.append(normalized)
+
+        out.sort(key=lambda x: x["timestamp"])
+        return out
+

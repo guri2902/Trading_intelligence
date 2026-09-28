@@ -1,0 +1,15 @@
+/* Optional Phase 15 layout integration.
+   Add this class to the existing root wrapper in frontend/app/layout.tsx. */
+
+/*
+<body>
+  <div className="app-root">
+    {children}
+  </div>
+</body>
+*/
+
+.app-root {
+  min-height: 100vh;
+  min-width: 0;
+}

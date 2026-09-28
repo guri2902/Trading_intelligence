@@ -1,0 +1,271 @@
+from __future__ import annotations
+
+from datetime import date
+from pathlib import Path
+
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(PROJECT_ROOT / ".env")
+
+from .api.phase4 import router as phase4_router
+from .api.phase5 import router as phase5_router
+from .api.phase6 import router as phase6_router
+from .api.phase7 import router as phase7_router
+from .api.phase8 import router as phase8_router
+from .api.phase9 import router as phase9_router
+from .api.phase10 import router as phase10_router
+from .api.phase11 import router as phase11_router
+from .api.phase12 import router as phase12_router
+from .api.phase13 import router as phase13_router
+from .api.phase14 import router as phase14_router
+from .api.phase15 import router as phase15_router
+from .api.phase16 import router as phase16_router
+from .api.phase17 import router as phase17_router
+from .api.phase18 import router as phase18_router
+from .api.phase19 import router as phase19_router
+from .api.phase20 import router as phase20_router
+from .api.phase21 import router as phase21_router
+from .api.phase22 import router as phase22_router
+
+from .api.realtime import router as realtime_router
+from .api.phase21_drive import router as phase21_drive_router
+from .api.strategy_studio import router as strategy_studio_router
+from .api.backtest_data import router as backtest_data_router
+from .api.optionvault_research_suite import router as optionvault_research_suite_router
+
+# UI/backend integration routers
+from .api.paper_ui import router as paper_ui_router
+from .api.market_data_ui import router as market_data_ui_router
+from .api.research_ui import router as research_ui_router
+from .api.history_settings_ui import router as history_settings_ui_router
+from .api.upstox_health import router as upstox_health_router
+from .api.market_ui import router as market_ui_router
+
+from .db.init_db import init_db
+from .db import audit as _audit_models
+from .db.session import get_db
+from .data_service import DataService
+from .instruments.models import InstrumentRecord
+from .instruments.service import InstrumentService
+
+
+app = FastAPI(
+    title="Trading Intelligence Platform",
+    version="0.29.0",
+    description="Durable market data ingestion, quality validation and persistence.",
+)
+
+init_db()
+data_service = DataService()
+instrument_service = InstrumentService()
+
+# Core phase routers
+app.include_router(phase4_router)
+app.include_router(phase5_router)
+app.include_router(phase6_router)
+app.include_router(phase7_router)
+app.include_router(phase8_router)
+app.include_router(phase9_router)
+app.include_router(phase10_router)
+app.include_router(phase11_router)
+app.include_router(phase12_router)
+app.include_router(phase13_router)
+app.include_router(phase14_router)
+app.include_router(phase15_router)
+app.include_router(phase16_router)
+app.include_router(phase17_router)
+app.include_router(phase18_router)
+app.include_router(phase19_router)
+app.include_router(phase20_router)
+app.include_router(phase21_router)
+app.include_router(phase22_router)
+
+# Realtime/data/service routers
+app.include_router(realtime_router)
+app.include_router(phase21_drive_router)
+app.include_router(optionvault_research_suite_router)
+app.include_router(strategy_studio_router)
+app.include_router(backtest_data_router)
+
+# Frontend integration routers
+app.include_router(paper_ui_router)
+app.include_router(market_data_ui_router)
+app.include_router(research_ui_router)
+app.include_router(history_settings_ui_router)
+app.include_router(upstox_health_router)
+app.include_router(market_ui_router)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        origin.strip()
+        for origin in __import__("os")
+        .getenv("FRONTEND_ORIGINS", "http://localhost:3000")
+        .split(",")
+        if origin.strip()
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+
+# Final phases exposed through the production app.
+# These are optional so older installations still boot when a phase module
+# is not present.
+try:
+    from api.phase23 import router as phase23_router_top
+
+    app.include_router(phase23_router_top)
+except Exception:
+    pass
+
+try:
+    from api.phase24 import router as phase24_router_top
+
+    app.include_router(phase24_router_top)
+except Exception:
+    pass
+
+try:
+    from api.phase25 import router as phase25_router_top
+
+    app.include_router(phase25_router_top)
+except Exception:
+    pass
+
+try:
+    from api.phase26 import router as phase26_router_top
+
+    app.include_router(phase26_router_top)
+except Exception:
+    pass
+
+try:
+    from api.phase27 import router as phase27_router_top
+
+    app.include_router(phase27_router_top)
+except Exception:
+    pass
+
+
+@app.get("/providers/health")
+def providers_health():
+    return data_service.health()
+
+
+@app.get("/providers/{provider_name}/health")
+def provider_health(provider_name: str):
+    try:
+        return data_service.provider_health(provider_name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/providers/optionvault/coverage")
+def optionvault_coverage():
+    provider = data_service.providers["optionvault"]
+    coverage = getattr(provider, "coverage", None)
+    if coverage is None:
+        raise HTTPException(
+            status_code=404,
+            detail="OptionVault coverage endpoint unavailable",
+        )
+    return coverage()
+
+
+class InstrumentSyncRequest(BaseModel):
+    instruments: list[InstrumentRecord]
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "phase": 29,
+        "providers": data_service.health(),
+    }
+
+
+@app.post("/instruments/sync")
+def instruments_sync(
+    request: InstrumentSyncRequest,
+    db: Session = Depends(get_db),
+):
+    return instrument_service.sync(db, request.instruments)
+
+
+@app.get("/instruments")
+def instruments(
+    exchange: str | None = None,
+    segment: str | None = None,
+    underlying_symbol: str | None = None,
+    expiry_date: date | None = None,
+    option_type: str | None = None,
+    db: Session = Depends(get_db),
+):
+    from sqlalchemy import select
+    from .db.models import Instrument
+
+    stmt = select(Instrument)
+
+    if exchange:
+        stmt = stmt.where(Instrument.exchange == exchange.upper())
+    if segment:
+        stmt = stmt.where(Instrument.segment == segment.upper())
+    if underlying_symbol:
+        stmt = stmt.where(
+            Instrument.underlying_symbol == underlying_symbol.upper()
+        )
+    if expiry_date:
+        stmt = stmt.where(Instrument.expiry_date == expiry_date)
+    if option_type:
+        stmt = stmt.where(Instrument.option_type == option_type.upper())
+
+    rows = db.scalars(stmt.limit(1000)).all()
+
+    return [
+        {
+            "instrument_key": row.instrument_key,
+            "exchange": row.exchange,
+            "segment": row.segment,
+            "instrument_type": row.instrument_type,
+            "trading_symbol": row.trading_symbol,
+            "underlying_key": row.underlying_key,
+            "underlying_symbol": row.underlying_symbol,
+            "expiry_date": (
+                row.expiry_date.isoformat() if row.expiry_date else None
+            ),
+            "strike": str(row.strike) if row.strike is not None else None,
+            "option_type": row.option_type,
+            "lot_size": row.lot_size,
+            "tick_size": (
+                str(row.tick_size) if row.tick_size is not None else None
+            ),
+            "source": row.source,
+            "is_active": row.is_active,
+        }
+        for row in rows
+    ]
+
+
+# Phase 28 production hardening
+try:
+    from .production import ProductionMiddleware
+
+    app.add_middleware(ProductionMiddleware)
+except Exception:
+    pass
+
+try:
+    from api.phase28 import router as phase28_router
+
+    app.include_router(phase28_router)
+except Exception:
+    pass

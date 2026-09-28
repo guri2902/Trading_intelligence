@@ -1,0 +1,264 @@
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\frontend\app\page.tsx =====
+"use client";
+
+import { useEffect, useState } from "react";
+import { Shell } from "../components/Shell";
+
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+
+type PipelineStatus = {
+  running: boolean;
+  cycle_count: number;
+  last_error: string | null;
+  interval_seconds: number | null;
+  last_result?: {
+    status?: string;
+    timestamp?: string;
+    candle_timestamp?: string;
+    signal?: {
+      action?: string;
+      direction?: string;
+      confidence?: number;
+      score?: number;
+      hard_gates?: string[];
+      selected?: Record<string, unknown> | null;
+      live_signal_gate?: {
+        passed?: boolean;
+        reasons?: string[];
+      };
+    };
+    risk?: {
+      approved?: boolean;
+      final_action?: string;
+      assessment?: {
+        reason_codes?: string[];
+        risk_budget?: number;
+        quantity?: number;
+        lots?: number;
+        estimated_trade_risk?: number;
+        risk_pct_of_equity?: number;
+      };
+    };
+  };
+};
+
+export default function Home() {
+  const [data, setData] = useState<PipelineStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function loadStatus() {
+    try {
+      const response = await fetch(`${API_BASE}/pipeline/status`, {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`);
+      }
+
+      const payload = await response.json();
+      setData(payload);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Backend unavailable");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadStatus();
+
+    const timer = setInterval(loadStatus, 5000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const signal = data?.last_result?.signal;
+  const risk = data?.last_result?.risk;
+
+  const action = signal?.action || "WAIT";
+  const finalAction = risk?.final_action || "NO_TRADE";
+
+  const dataHealthy =
+    data?.running &&
+    data?.last_result?.status === "UPDATED" &&
+    !data?.last_error;
+
+  return (
+    <Shell>
+      <div className="topbar">
+        <div>
+          <div className="eyebrow">Market command center</div>
+          <h1>Today’s decision layer</h1>
+        </div>
+
+        <div className="status">
+          <span className="dot" />
+          Execution disabled by design
+        </div>
+      </div>
+
+      <div className="grid cols4">
+        <div className="card">
+          <h3>Top signal</h3>
+
+          <div className="big">{action}</div>
+
+          <div className="small">
+            Confidence:{" "}
+            {signal?.confidence != null
+              ? `${signal.confidence.toFixed(1)}%`
+              : "—"}
+          </div>
+        </div>
+
+        <div className="card">
+          <h3>Data health</h3>
+
+          <div className="big">
+            {loading ? "..." : dataHealthy ? "LIVE" : "WAIT"}
+          </div>
+
+          <div className="small">
+            {data?.cycle_count ?? 0} analysis cycle
+            {data?.cycle_count === 1 ? "" : "s"} completed
+          </div>
+        </div>
+
+        <div className="card">
+          <h3>Risk state</h3>
+
+          <div className="big">
+            {risk?.approved ? "APPROVED" : finalAction}
+          </div>
+
+          <div className="small">
+            {risk?.assessment?.estimated_trade_risk != null
+              ? `Risk ₹${Number(
+                  risk.assessment.estimated_trade_risk
+                ).toFixed(2)}`
+              : "No approved trade"}
+          </div>
+        </div>
+
+        <div className="card">
+          <h3>Pipeline</h3>
+
+          <div className="big">
+            {data?.running ? "RUNNING" : "STOPPED"}
+          </div>
+
+          <div className="small">
+            Refresh: {data?.interval_seconds ?? 30}s
+          </div>
+        </div>
+      </div>
+
+      <div className="section">
+        <h2 className="section-title">Live decision</h2>
+
+        <div className="grid cols3">
+          <div className="card">
+            <h3>Direction</h3>
+            <div>{signal?.direction || "NONE"}</div>
+            <div className="small">
+              Score:{" "}
+              {signal?.score != null
+                ? Number(signal.score).toFixed(2)
+                : "—"}
+            </div>
+          </div>
+
+          <div className="card">
+            <h3>Risk decision</h3>
+            <div>{finalAction}</div>
+            <div className="small">
+              {risk?.assessment?.reason_codes?.length
+                ? risk.assessment.reason_codes.join(", ")
+                : "No risk blockers"}
+            </div>
+          </div>
+
+          <div className="card">
+            <h3>Market gate</h3>
+            <div>
+              {signal?.live_signal_gate?.passed ? "PASS" : "WAIT"}
+            </div>
+            <div className="small">
+              {signal?.live_signal_gate?.reasons?.length
+                ? signal.live_signal_gate.reasons.join(", ")
+                : "No gate failures"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="section">
+        <h2 className="section-title">Pipeline</h2>
+
+        <div className="grid cols3">
+          {[
+            "Data validation",
+            "Market structure",
+            "Options engine",
+            "Strategy + ML",
+            "Agent debate",
+            "Risk + ranking",
+          ].map((x, i) => (
+            <div className="card" key={x}>
+              <h3>0{i + 1}</h3>
+              <div>{x}</div>
+              <div className="small">
+                Deterministic source of truth where applicable.
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="section note">
+        {error
+          ? `Backend connection error: ${error}`
+          : data?.last_error
+            ? `Pipeline error: ${data.last_error}`
+            : data?.last_result?.timestamp
+              ? `Last update: ${data.last_result.timestamp}`
+              : "Waiting for the realtime pipeline to produce its first market result."}
+      </div>
+    </Shell>
+  );
+}
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\frontend\app\ai-analysis\page.tsx =====
+import {Shell} from "../../components/Shell"; export default function AIAnalysis(){return <Shell><div className="eyebrow">Multi-agent</div><h1>AI Analysis</h1><div className="card"><h3>CE vs PE debate</h3><div className="grid cols2"><div className="note"><b>CE case</b><br/>No live evidence loaded.</div><div className="note"><b>PE case</b><br/>No live evidence loaded.</div></div><div className="section"><span className="pill neutral">NO TRADE</span> until deterministic inputs are present.</div></div></Shell>}
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\frontend\app\analysis\page.tsx =====
+import {Shell} from "../../components/Shell"; export default function Analysis(){return <Shell><div className="eyebrow">Research stack</div><h1>Market Analysis</h1><div className="section grid cols2">{["Technical / Structure","Options positioning","Fundamentals","Sentiment + News","ML evidence","Contrarian review"].map(x=><div className="card" key={x}><h3>{x}</h3><div className="small">Awaiting structured live inputs.</div></div>)}</div></Shell>}
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\frontend\app\backtest\page.tsx =====
+import {Shell} from "../../components/Shell"; export default function Backtest(){return <Shell><div className="eyebrow">Research</div><h1>Backtest</h1><div className="grid cols3 section">{["Historical options","Walk-forward","OOS promotion"].map(x=><div className="card" key={x}><h3>{x}</h3><div className="big">—</div><div className="small">Run against stored historical data through the backend APIs.</div></div>)}</div></Shell>}
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\frontend\app\history\page.tsx =====
+import {Shell} from "../../components/Shell"; export default function History(){return <Shell><div className="eyebrow">Audit</div><h1>History</h1><div className="card section"><table className="table"><thead><tr><th>Time</th><th>Signal</th><th>Action</th><th>P&L</th></tr></thead><tbody><tr><td>—</td><td>—</td><td>NO TRADE</td><td>—</td></tr></tbody></table></div></Shell>}
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\frontend\app\option-chain\page.tsx =====
+import {Shell} from "../../components/Shell"; export default function OptionChain(){return <Shell><div className="topbar"><div><div className="eyebrow">Derivatives</div><h1>Option Chain</h1></div></div><div className="card"><div className="row"><button className="btn primary">NIFTY</button><button className="btn">BANKNIFTY</button><span className="small">Dynamic expiry · Live data required</span></div><div className="section"><table className="table"><thead><tr><th>CE OI</th><th>CE LTP</th><th>Strike</th><th>PE LTP</th><th>PE OI</th></tr></thead><tbody><tr><td>—</td><td>—</td><td>ATM —</td><td>—</td><td>—</td></tr></tbody></table></div><div className="section error">NSE/Upstox option data is not connected in this browser session. No trade is generated.</div></div></Shell>}
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\frontend\app\paper\page.tsx =====
+import {Shell} from "../../components/Shell"; export default function Paper(){return <Shell><div className="eyebrow">Simulation</div><h1>Paper Trading</h1><div className="grid cols3 section"><div className="card"><h3>Account</h3><div className="big">₹0</div><div className="small">No active paper account in this session.</div></div><div className="card"><h3>Open positions</h3><div className="big">0</div></div><div className="card"><h3>Execution</h3><div className="pill good">SIMULATION ONLY</div></div></div></Shell>}
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\frontend\app\risk\page.tsx =====
+import {Shell} from "../../components/Shell"; export default function Risk(){return <Shell><div className="eyebrow">Controls</div><h1>Risk</h1><div className="grid cols3 section">{[["Daily loss limit","Configured"],["Concurrent risk","Configured"],["Square-off","Configured"]].map(([a,b])=><div className="card" key={a}><h3>{a}</h3><div className="big">{b}</div><div className="small">Final risk engine remains authoritative.</div></div>)}</div></Shell>}
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\frontend\app\scanner\page.tsx =====
+import {Shell} from "../../components/Shell"; export default function Scanner(){return <Shell><div className="topbar"><div><div className="eyebrow">Universe</div><h1>Scanner</h1></div></div><div className="card"><h3>Signal candidates</h3><table className="table"><thead><tr><th>Symbol</th><th>Bias</th><th>Score</th><th>Option</th><th>Risk</th></tr></thead><tbody><tr><td>NIFTY</td><td><span className="pill neutral">WAIT</span></td><td>—</td><td>Awaiting chain</td><td>Blocked</td></tr><tr><td>BANKNIFTY</td><td><span className="pill neutral">WAIT</span></td><td>—</td><td>Awaiting chain</td><td>Blocked</td></tr></tbody></table></div></Shell>}
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\frontend\app\settings\page.tsx =====
+import {Shell} from "../../components/Shell"; export default function Settings(){return <Shell><div className="eyebrow">Configuration</div><h1>Settings</h1><div className="grid cols2 section"><div className="card"><h3>Data</h3><div className="small">UPSTOX_ACCESS_TOKEN is server-side only. Never place broker credentials in NEXT_PUBLIC_* variables.</div></div><div className="card"><h3>Execution</h3><div className="pill good">DISABLED</div><div className="small">This phase does not add live order submission.</div></div></div></Shell>}
+
+===== C:\Users\Guri\Downloads\trading_intelligence_platform_phase1\frontend\app\strategies\page.tsx =====
+import {Shell} from "../../components/Shell"; export default function Strategies(){let x=["VWAP Pullback","EMA Continuation","ORB","ORB Retest","S/R Rejection","Range Fade","Momentum","Volatility Breakout","Option Directional"];return <Shell><div className="eyebrow">Strategy engine</div><h1>Strategies</h1><div className="grid cols3 section">{x.map((s,i)=><div className="card" key={s}><h3>0{i+1}</h3><div>{s}</div><div className="small">Evaluation governed by OOS gates.</div></div>)}</div></Shell>}
+

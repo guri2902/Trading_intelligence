@@ -1,0 +1,319 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+
+from .costs import transaction_cost
+from .data import ensure_no_future_data, validate_historical_rows
+from .execution import simulate_fill
+from .metrics import compute_metrics
+from .models import (
+    BacktestConfig,
+    BacktestResult,
+    EquityPoint,
+    TradeRecord,
+)
+
+
+class BacktestEngine:
+    """
+    Deterministic bar-based strategy backtester.
+
+    Expected signal callback contract:
+      signal_fn(history_rows) -> dict | None
+
+    A returned signal can contain:
+      {
+        "strategy": "EMA_CONTINUATION",
+        "direction": "LONG" | "SHORT",
+        "entry": float,
+        "invalidation": float,
+        "target_1": float,
+        "target_2": float,
+      }
+
+    Crucially, history_rows contains only bars before the execution bar.
+    """
+
+    def run(
+        self,
+        rows: list[dict],
+        signal_fn,
+        *,
+        strategy_name: str,
+        config: BacktestConfig | None = None,
+        mode: str = "UNDERLYING",
+        exit_fn=None,
+        timestamp_key: str = "timestamp",
+        execution_price_key: str = "open",
+        high_key: str = "high",
+        low_key: str = "low",
+        close_key: str = "close",
+    ) -> BacktestResult:
+        config = config or BacktestConfig()
+        rows = validate_historical_rows(
+            rows,
+            timestamp_key=timestamp_key,
+        )
+
+        warnings: list[str] = []
+        if mode == "OPTIONS":
+            warnings.append(
+                "Options mode requires actual historical option prices; "
+                "underlying bars alone must not be used as synthetic option prices."
+            )
+
+        capital = config.initial_capital
+        peak_equity = capital
+        realized = 0.0
+
+        trades: list[TradeRecord] = []
+        equity_curve: list[EquityPoint] = []
+
+        open_trade: dict | None = None
+        trade_id = 0
+
+        for i in range(len(rows)):
+            row = rows[i]
+            ts = row[timestamp_key]
+            if isinstance(ts, str):
+                ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+
+            # Mark equity using the latest close, before making the next signal.
+            mark_equity = capital
+            if open_trade:
+                current_close = float(row[close_key])
+                entry = open_trade["fill"].price
+                qty = open_trade["fill"].quantity
+                direction = open_trade["signal"]["direction"]
+                unrealized = (
+                    (current_close - entry) * qty
+                    if direction == "LONG"
+                    else (entry - current_close) * qty
+                )
+                mark_equity += unrealized
+
+            peak_equity = max(peak_equity, mark_equity)
+            dd = max(peak_equity - mark_equity, 0.0)
+            dd_pct = dd / peak_equity * 100 if peak_equity else 0.0
+
+            equity_curve.append(
+                EquityPoint(
+                    timestamp=ts,
+                    equity=mark_equity,
+                    realized_pnl=realized,
+                    drawdown=dd,
+                    drawdown_pct=dd_pct,
+                )
+            )
+
+            # Manage an existing trade using the current bar's OHLC.
+            if open_trade and i >= open_trade["entry_index"]:
+                signal = open_trade["signal"]
+                direction = signal["direction"]
+                entry = open_trade["fill"].price
+                qty = open_trade["fill"].quantity
+
+                high = float(row[high_key])
+                low = float(row[low_key])
+                close = float(row[close_key])
+
+                exit_price = None
+                reason = None
+
+                if direction == "LONG":
+                    stop = float(signal["invalidation"])
+                    target = float(signal["target_2"] or signal["target_1"])
+
+                    if low <= stop and high >= target:
+                        # Conservative same-bar ambiguity rule:
+                        # assume stop was hit first.
+                        exit_price = stop
+                        reason = "STOP_AND_TARGET_SAME_BAR_STOP_FIRST"
+                    elif low <= stop:
+                        exit_price = stop
+                        reason = "STOP"
+                    elif high >= target:
+                        exit_price = target
+                        reason = "TARGET"
+                    elif i == len(rows) - 1:
+                        exit_price = close
+                        reason = "END_OF_DATA"
+
+                    if exit_price is None and exit_fn is not None:
+                        try:
+                            should_exit = bool(exit_fn(rows[: i + 1], signal, row))
+                        except Exception as exc:
+                            should_exit = False
+                            warnings.append(f"Exit evaluator error at {ts}: {exc}")
+                        if should_exit:
+                            exit_price = close
+                            reason = "CONDITION_EXIT"
+
+                elif direction == "SHORT":
+                    stop = float(signal["invalidation"])
+                    target = float(signal["target_2"] or signal["target_1"])
+
+                    if high >= stop and low <= target:
+                        exit_price = stop
+                        reason = "STOP_AND_TARGET_SAME_BAR_STOP_FIRST"
+                    elif high >= stop:
+                        exit_price = stop
+                        reason = "STOP"
+                    elif low <= target:
+                        exit_price = target
+                        reason = "TARGET"
+                    elif i == len(rows) - 1:
+                        exit_price = close
+                        reason = "END_OF_DATA"
+
+                    if exit_price is None and exit_fn is not None:
+                        try:
+                            should_exit = bool(exit_fn(rows[: i + 1], signal, row))
+                        except Exception as exc:
+                            should_exit = False
+                            warnings.append(f"Exit evaluator error at {ts}: {exc}")
+                        if should_exit:
+                            exit_price = close
+                            reason = "CONDITION_EXIT"
+
+                if exit_price is not None:
+                    fill = simulate_fill(
+                        requested_price=exit_price,
+                        direction="SHORT" if direction == "LONG" else "LONG",
+                        quantity=qty,
+                        slippage_bps=config.costs.slippage_bps,
+                        partial_fill_ratio=config.costs.partial_fill_ratio,
+                    )
+
+                    gross = (
+                        (fill.price - entry) * qty
+                        if direction == "LONG"
+                        else (entry - fill.price) * qty
+                    )
+
+                    costs = transaction_cost(
+                        entry_value=entry * qty,
+                        exit_value=fill.price * qty,
+                        config=config.costs,
+                    )
+
+                    net = gross - costs
+                    realized += net
+                    capital = config.initial_capital + realized
+
+                    trade = TradeRecord(
+                        trade_id=open_trade["trade_id"],
+                        strategy=strategy_name,
+                        direction=direction,
+                        entry_time=open_trade["entry_time"],
+                        exit_time=ts,
+                        requested_entry=open_trade["requested_entry"],
+                        filled_entry=entry,
+                        exit_price=fill.price,
+                        quantity=qty,
+                        gross_pnl=gross,
+                        total_cost=costs,
+                        net_pnl=net,
+                        max_favorable_excursion=open_trade["mfe"],
+                        max_adverse_excursion=open_trade["mae"],
+                        exit_reason=reason,
+                        duration_bars=i - open_trade["entry_index"],
+                        win=net > 0,
+                    )
+                    trades.append(trade)
+                    open_trade = None
+                    continue
+
+                # MFE/MAE are updated from current bar.
+                if direction == "LONG":
+                    open_trade["mfe"] = max(
+                        open_trade["mfe"],
+                        (high - entry) * qty,
+                    )
+                    open_trade["mae"] = min(
+                        open_trade["mae"],
+                        (low - entry) * qty,
+                    )
+                else:
+                    open_trade["mfe"] = max(
+                        open_trade["mfe"],
+                        (entry - low) * qty,
+                    )
+                    open_trade["mae"] = min(
+                        open_trade["mae"],
+                        (entry - high) * qty,
+                    )
+
+            # Only make a new decision when flat.
+            if open_trade is not None:
+                continue
+
+            if i >= len(rows) - 1:
+                continue
+
+            # The signal sees only history through i.
+            history = rows[: i + 1]
+            signal = signal_fn(history)
+            if not signal:
+                continue
+
+            direction = signal.get("direction")
+            if direction not in {"LONG", "SHORT"}:
+                continue
+
+            if direction == "SHORT" and not config.allow_short:
+                continue
+
+            signal_ts = ts
+            next_row = rows[i + 1]
+            execution_ts = next_row[timestamp_key]
+            if isinstance(execution_ts, str):
+                execution_ts = datetime.fromisoformat(
+                    execution_ts.replace("Z", "+00:00")
+                )
+
+            # The signal decision is made on bar i and execution happens on
+            # the following bar. This makes same-bar close leakage less likely.
+            ensure_no_future_data(
+                signal_time=signal_ts,
+                decision_time=execution_ts,
+            )
+
+            requested_entry = float(
+                signal.get("entry", next_row[execution_price_key])
+            )
+
+            fill = simulate_fill(
+                requested_price=float(next_row[execution_price_key]),
+                direction=direction,
+                quantity=config.quantity,
+                slippage_bps=config.costs.slippage_bps,
+                partial_fill_ratio=config.costs.partial_fill_ratio,
+            )
+
+            trade_id += 1
+            open_trade = {
+                "trade_id": trade_id,
+                "entry_index": i + 1,
+                "entry_time": execution_ts,
+                "requested_entry": requested_entry,
+                "fill": fill,
+                "signal": signal,
+                "mfe": 0.0,
+                "mae": 0.0,
+            }
+
+        metrics = compute_metrics(
+            initial_capital=config.initial_capital,
+            trades=trades,
+            equity=equity_curve,
+        )
+
+        return BacktestResult(
+            strategy=strategy_name,
+            mode=mode,
+            metrics=metrics,
+            trades=trades,
+            equity_curve=equity_curve,
+            warnings=warnings,
+        )

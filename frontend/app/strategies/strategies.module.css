@@ -1,0 +1,111 @@
+.page{max-width:1440px;margin:0 auto;padding-bottom:40px;color:var(--text-primary)}
+.header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:16px}
+.eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.13em;font-weight:800;color:var(--text-tertiary)}
+.header h1,.libraryTop h2,.section h2,.previewCard h2,.strategyCard h3,.emptyLibrary h3{font-family:Georgia,serif;font-weight:500}
+.header h1{font-size:40px;line-height:1.05;margin:4px 0}
+.header p,.libraryTop p{margin:5px 0 0;color:var(--text-secondary);font-size:12px;line-height:1.5;max-width:850px}
+.primaryButton,.secondaryButton,.iconButton,.tab,.tabActive,.linkButton,.template{
+  border:1px solid var(--border);font:inherit;cursor:pointer;transition:all .14s ease
+}
+.primaryButton{min-height:40px;padding:0 14px;display:inline-flex;align-items:center;gap:7px;border-color:var(--accent);background:var(--accent);color:var(--accent-contrast);border-radius:8px;font-size:12px;font-weight:800}
+.primaryButton:hover:not(:disabled){background:var(--accent-hover);border-color:var(--accent-hover);transform:translateY(-1px)}
+.primaryButton:disabled{opacity:.55;cursor:not-allowed}
+.secondaryButton{min-height:38px;padding:0 11px;display:inline-flex;align-items:center;gap:6px;border-radius:8px;background:var(--surface);color:var(--text-primary);font-size:11px;font-weight:750}
+.secondaryButton:hover{border-color:var(--accent);color:var(--accent);background:var(--surface-hover)}
+.iconButton{width:34px;height:34px;display:grid;place-items:center;border-radius:8px;background:var(--surface);color:var(--text-secondary)}
+.iconButton:hover{border-color:var(--accent);color:var(--accent);background:var(--surface-hover)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.tab,.tabActive{padding:10px 14px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--text-secondary);font-size:12px;font-weight:800}
+.tabActive{color:var(--accent);border-bottom-color:var(--accent)}
+.tab span{margin-left:5px;color:var(--text-tertiary)}
+.error,.message{padding:10px 12px;border-radius:8px;font-size:12px;margin-bottom:12px}
+.error{color:var(--danger);background:var(--danger-bg);border:1px solid var(--border)}
+.message{color:var(--text-secondary);background:var(--surface-hover);border:1px solid var(--border)}
+.builder{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(360px,.8fr);gap:16px}
+.left{display:grid;gap:16px}
+.section,.previewCard{background:var(--surface);border:1px solid var(--border);border-radius:10px}
+.section{padding:18px}
+.sectionHead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:15px}
+.section h2,.previewCard h2{font-size:22px;margin:4px 0 0}
+.badge{padding:5px 8px;border-radius:999px;background:var(--warning-bg);color:var(--warning);border:1px solid var(--border);font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.formGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.formGrid label,.spotBox label{display:grid;gap:6px;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-secondary);font-weight:800}
+.formGrid .full{grid-column:1/-1}
+.formGrid input,.formGrid select,.formGrid textarea,.spotBox input,.libraryControls input,.libraryControls select,.conditionRow input,.conditionRow select,.leg select,.leg input,.logicSelect{
+  width:100%;min-height:38px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-primary);font:inherit;font-size:12px
+}
+.formGrid textarea{padding:9px 10px;min-height:84px;resize:vertical}
+.legHeader,.leg{display:grid;grid-template-columns:70px 64px 100px 110px 78px 64px 1fr 34px;gap:7px;align-items:center}
+.legHeader{padding:0 9px 6px;color:var(--text-tertiary);font-size:8px;text-transform:uppercase;letter-spacing:.08em}
+.legs{display:grid;gap:7px}
+.leg{padding:8px;border:1px solid var(--border);border-radius:9px;background:var(--surface-hover)}
+.leg select,.leg input{min-height:35px;padding:0 7px;font-size:10px}
+.specificStrike,.specificExpiry{grid-column:auto}
+.templates{margin-top:15px;padding-top:14px;border-top:1px solid var(--border)}
+.templateLabel{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-tertiary);font-weight:800}
+.templateGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:9px}
+.template{padding:10px;text-align:left;border-radius:8px;background:var(--surface);color:var(--text-primary)}
+.template:hover{border-color:var(--accent);background:var(--surface-hover);transform:translateY(-1px)}
+.template strong{display:block;font-size:11px}
+.template span{display:block;margin-top:4px;color:var(--text-secondary);font-size:10px}
+.conditionBlock{padding:12px;border:1px solid var(--border);border-radius:9px;background:var(--surface-hover);margin-top:10px}
+.conditionHead{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:8px}
+.conditionHead strong{font-size:12px}
+.linkButton{border:0;background:transparent;color:var(--accent);padding:3px;font-size:11px;font-weight:800;display:inline-flex;align-items:center;gap:5px}
+.logicSelect{width:145px;min-height:34px!important}
+.conditionRow{display:grid;grid-template-columns:1.2fr 1fr 1fr 34px;gap:7px;margin-top:7px}
+.conditionRow input,.conditionRow select{min-height:35px}
+.emptyLine{padding:10px;border:1px dashed var(--border);border-radius:7px;font-size:11px;color:var(--text-secondary)}
+.right{position:relative}
+.previewCard{position:sticky;top:88px;padding:18px}
+.previewTitleRow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.previewTitleRow h2{font-size:21px}
+.previewTitleRow span:not(.badge){font-size:11px;color:var(--text-secondary)}
+.spotBox{margin-top:14px}
+.graphEmpty{height:260px;display:grid;place-items:center;text-align:center;padding:24px;margin-top:12px;border:1px dashed var(--border);border-radius:9px;background:var(--surface-hover);color:var(--text-secondary);font-size:12px}
+.graphEmpty strong{display:block;color:var(--text-primary);margin-bottom:5px}
+.graphWrap{margin-top:12px}
+.graphMeta,.graphAxisLabels{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--text-tertiary)}
+.graph{width:100%;height:260px;display:block;margin-top:7px;border:1px solid var(--border);border-radius:9px;background:var(--surface-hover)}
+.graphProfit{fill:var(--success-bg);opacity:.7}
+.graphLoss{fill:var(--danger-bg);opacity:.7}
+.graphAxis{stroke:var(--border);stroke-width:1}
+.graphLine{fill:none;stroke:var(--accent);stroke-width:1.8}
+.legSummary{display:grid;gap:6px;margin-top:13px}
+.legSummaryRow{display:grid;grid-template-columns:52px 38px 1fr 55px;gap:7px;align-items:center;padding:8px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface-hover);font-size:10px}
+.buy,.sell{width:max-content;padding:3px 6px;border-radius:5px;font-weight:800}
+.buy{background:var(--success-bg);color:var(--success)}
+.sell{background:var(--danger-bg);color:var(--danger)}
+.saveBox{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:9px;background:var(--surface-active)}
+.saveBox strong,.saveBox span{display:block}
+.saveBox strong{font-size:12px;color:var(--text-primary)}
+.saveBox span{margin-top:3px;font-size:10px;color:var(--text-secondary)}
+.secondaryLink{margin-top:9px;display:inline-flex;align-items:center;gap:6px;color:var(--accent);font-size:11px;font-weight:800;text-decoration:none}
+.libraryTop{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:14px}
+.libraryTop h2{font-size:27px;margin:5px 0 0}
+.libraryControls{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.libraryControls input{min-width:230px}
+.libraryControls select{min-width:110px}
+.libraryGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.strategyCard{min-height:250px;display:flex;flex-direction:column;gap:10px;padding:15px;background:var(--surface);border:1px solid var(--border);border-radius:10px;transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease}
+.strategyCard:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:0 10px 24px rgba(0,0,0,.10)}
+.cardTop,.cardActions{display:flex;justify-content:space-between;align-items:center;gap:7px;flex-wrap:wrap}
+.status,.chips span{padding:4px 7px;border-radius:999px;border:1px solid var(--border);font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.statusGood{background:var(--success-bg);color:var(--success)}
+.statusWarn{background:var(--warning-bg);color:var(--warning)}
+.statusBad{background:var(--danger-bg);color:var(--danger)}
+.version{font-size:10px;color:var(--text-tertiary)}
+.cardEyebrow{margin-top:5px;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-tertiary)}
+.strategyCard h3{font-size:18px;line-height:1.15;margin:4px 0 0}
+.engine{font-family:ui-monospace,SFMono-Regular,monospace;color:var(--accent);font-size:9px;letter-spacing:.03em}
+.strategyCard p{margin:0;color:var(--text-secondary);font-size:11px;line-height:1.5;min-height:48px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips span{color:var(--neutral-pill);background:var(--neutral-pill-bg);text-transform:none;letter-spacing:0;font-weight:700}
+.cardActions{margin-top:auto;justify-content:flex-start}
+.cardActions .iconButton{margin-left:auto}
+.emptyLibrary{display:grid;place-items:center;text-align:center;min-height:300px;padding:30px;border:1px dashed var(--border);border-radius:10px;background:var(--surface-hover)}
+.emptyLibrary h3{font-size:23px;margin:0 0 5px}
+.emptyLibrary p{color:var(--text-secondary);font-size:12px;margin:0 0 14px}
+@media(max-width:1220px){.builder{grid-template-columns:1fr}.right{position:static}.previewCard{position:static}.libraryGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:980px){.formGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.templateGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.libraryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.legHeader{display:none}.leg{grid-template-columns:repeat(4,minmax(0,1fr));align-items:end}.leg>*{min-width:0}.leg .iconButton{justify-self:end}.specificStrike,.specificExpiry{grid-column:span 2}}
+@media(max-width:640px){.header,.libraryTop{align-items:flex-start;flex-direction:column}.formGrid,.libraryGrid{grid-template-columns:1fr}.conditionRow{grid-template-columns:1fr 1fr}.conditionRow input{grid-column:span 2}.leg{grid-template-columns:1fr 1fr}.templates .templateGrid{grid-template-columns:1fr}.libraryControls{width:100%;flex-direction:column;align-items:stretch}.libraryControls input,.libraryControls select{min-width:0}.saveBox{align-items:flex-start;flex-direction:column}}

@@ -1,0 +1,57 @@
+--- /mnt/data/files/walkforward(1).py	2026-09-28 05:32:17.819650418 +0000
++++ /mnt/data/trading_platform_multileg_patch/walkforward.py	2026-09-28 05:34:23.212206342 +0000
+@@ -89,6 +89,9 @@
+     min_oos_trades: int = 1,
+     min_oos_profit_factor: float = 1.0,
+     max_oos_drawdown_pct: float = 35.0,
++    legs: list[dict[str, Any]] | None = None,
++    loader: Any | None = None,
++    base_result: dict[str, Any] | None = None,
+ ) -> dict[str, Any]:
+     rows = normalize_rows(underlying_rows)
+     if len(rows) < train_size + validation_size + oos_size:
+@@ -101,7 +104,7 @@
+     # backtest and slicing its realized trades into chronological windows is therefore
+     # both faster and equivalent for the configured fixed strategy, while avoiding
+     # repeated Upstox downloads for every OOS window.
+-    full = run_strategy_option_backtest(
++    full = base_result or run_strategy_option_backtest(
+         rows,
+         strategy_name=strategy_name,
+         preferred_strategy=preferred_strategy,
+@@ -112,15 +115,17 @@
+         stop_pct=stop_pct,
+         target_rr=target_rr,
+         config=cfg,
++        loader=loader,
++        legs=legs,
+     )
+-    all_trades = list(full.get("trades") or [])
++    all_trades = list(full.get("strategy_trade_groups") or full.get("trades") or [])
+ 
+     evaluations: list[dict[str, Any]] = []
+     cursor = 0
+     index = 0
+     while True:
+         train_start = 0 if expanding else cursor
+-        train_end = train_start + train_size
++        train_end = (train_size + cursor) if expanding else (train_start + train_size)
+         val_start = train_end
+         val_end = val_start + validation_size
+         oos_start = val_end
+@@ -185,6 +190,7 @@
+ 
+     return {
+         "strategy": strategy_name,
++        "strategy_legs": len(legs or []),
+         "data_source": "Upstox",
+         "used_actual_option_prices": True,
+         "synthetic_prices": False,
+@@ -210,6 +216,7 @@
+             "promotion_gate": "PASS" if promotion else "FAIL",
+             "oos_trade_count": len(oos_trade_history),
+             "base_trade_count": len(all_trades),
++            "multi_leg_trade_grouping": bool(full.get("strategy_trade_groups")),
+             "base_diagnostics": full.get("diagnostics") or {},
+             "base_warnings": full.get("warnings") or [],
+             "failure_reasons": [x["failure_reason"] for x in evaluations if x.get("failure_reason")],

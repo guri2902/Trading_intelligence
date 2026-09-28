@@ -1,0 +1,5 @@
+# Phase 16F — register History + System Status UI endpoints in backend/app/main.py
+
+from .api.history_settings_ui import router as history_settings_ui_router
+
+app.include_router(history_settings_ui_router)

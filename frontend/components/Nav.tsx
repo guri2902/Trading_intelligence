@@ -1,0 +1,3 @@
+import Link from "next/link";
+const items=[["/","Overview"],["/scanner","Scanner"],["/option-chain","Option Chain"],["/analysis","Analysis"],["/ai-analysis","AI Analysis"],["/backtest","Backtest"],["/strategies","Strategies"],["/paper","Paper"],["/history","History"],["/risk","Risk"],["/settings","Settings"]];
+export function Nav(){return <aside className="sidebar"><div className="brand">Trading Intelligence</div><div className="tag">Indian options research & decision system</div><nav className="nav">{items.map(([href,label])=><Link key={href} href={href}>{label}</Link>)}</nav></aside>}

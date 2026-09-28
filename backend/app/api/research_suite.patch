@@ -1,0 +1,11 @@
+--- /mnt/data/files/optionvault_research_suite_FINAL_RESTORED.py	2026-09-28 05:32:18.343650405 +0000
++++ /mnt/data/trading_platform_multileg_patch/optionvault_research_suite.py	2026-09-28 05:33:53.566762324 +0000
+@@ -131,7 +131,7 @@
+ 
+         oos_trades = walkforward.get("oos_trade_history") or []
+         evidence_sample = "OOS" if oos_trades else "BASE_FALLBACK"
+-        regime_trades = oos_trades if oos_trades else list(base.get("trades") or [])
++        regime_trades = oos_trades if oos_trades else list(base.get("strategy_trade_groups") or base.get("trades") or [])
+ 
+         regime_analysis = analyze_trade_history(
+             req.underlying_rows,

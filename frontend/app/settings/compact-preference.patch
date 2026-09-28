@@ -1,0 +1,8 @@
+/* Phase 14 integration for frontend/app/settings/page.tsx.
+   Replace the existing theme-only useEffect with this one. */
+
+useEffect(() => {
+  document.documentElement.dataset.theme = settings.theme;
+  document.documentElement.dataset.compactTables =
+    settings.compactTables ? "true" : "false";
+}, [settings.theme, settings.compactTables]);

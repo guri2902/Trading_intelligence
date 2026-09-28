@@ -1,0 +1,273 @@
+/* Option Chain — CSS Module
+   All selectors are scoped through local classes so Next.js CSS Modules
+   does not reject plain global selectors such as `table` or `th`.
+*/
+
+.page {
+  min-height: 100%;
+  padding: 32px 36px 60px;
+  color: #2b241b;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  margin: 4px 0 5px;
+  font: 500 52px Georgia, "Times New Roman", serif;
+  letter-spacing: -0.04em;
+}
+
+.header p {
+  margin: 0;
+  color: #756858;
+  font-size: 14px;
+}
+
+.eyebrow {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #997752;
+}
+
+.status {
+  height: 34px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d8c8ae;
+  border-radius: 999px;
+  background: #f6edde;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #aaa;
+}
+
+.live {
+  background: #4d8c58;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #ddceb6;
+  border-radius: 12px;
+  background: #f8f1e4;
+}
+
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #8c765d;
+}
+
+.controls select {
+  height: 40px;
+  border: 1px solid #d6c6aa;
+  border-radius: 8px;
+  background: #f2e8d8;
+  padding: 0 10px;
+  font: inherit;
+  color: #33291f;
+}
+
+.controls button {
+  align-self: flex-end;
+  height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: #ba7932;
+  color: #fff;
+  font-weight: 800;
+  padding: 0 18px;
+  cursor: pointer;
+}
+
+.error,
+.wait {
+  margin-top: 12px;
+  padding: 13px 15px;
+  border-radius: 10px;
+}
+
+.error {
+  background: #f7e2dd;
+  border: 1px solid #deb0a5;
+  color: #a24534;
+}
+
+.wait {
+  display: flex;
+  gap: 10px;
+  background: #f8efd2;
+  border: 1px solid #dcc99c;
+  color: #7d6225;
+}
+
+.wait b {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.card {
+  padding: 14px;
+  border: 1px solid #ddceb8;
+  border-radius: 10px;
+  background: #f8f1e4;
+}
+
+.card span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #927e65;
+}
+
+.card strong {
+  font-size: 18px;
+}
+
+.tableCard {
+  overflow: hidden;
+  border: 1px solid #ddceb8;
+  border-radius: 12px;
+  background: #f8f1e4;
+}
+
+.tableTitle {
+  padding: 16px 18px;
+  border-bottom: 1px solid #dfd1ba;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.tableTitle h2 {
+  margin: 4px 0 0;
+  font: 500 26px Georgia, "Times New Roman", serif;
+}
+
+.tableTitle span {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #71865f;
+}
+
+.scroll {
+  overflow: auto;
+}
+
+/* The markup uses a native table. Keep these selectors scoped by the
+   local .scroll class while leaving the JSX simple. */
+.scroll :global(table) {
+  width: 100%;
+  min-width: 1050px;
+  border-collapse: collapse;
+}
+
+.scroll :global(th),
+.scroll :global(td) {
+  padding: 9px;
+  border-bottom: 1px solid #e5d9c5;
+  text-align: right;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.scroll :global(thead th) {
+  background: #f0e7d8;
+  color: #73624f;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.scroll :global(thead tr:first-child th) {
+  text-align: center;
+  color: #4c7653;
+}
+
+.atm :global(td) {
+  background: #eee0c4;
+}
+
+.strike {
+  text-align: center !important;
+  font-weight: 800;
+  background: #f2e7d2;
+}
+
+.strike small {
+  display: block;
+  font-size: 8px;
+  color: #a36631;
+  letter-spacing: 0.12em;
+}
+
+.pos {
+  color: #3d7b49;
+}
+
+.neg {
+  color: #a74b3d;
+}
+
+.empty {
+  padding: 56px;
+  text-align: center;
+  color: #7b6e5d;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .header {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: 22px 14px;
+  }
+
+  .controls,
+  .summary {
+    grid-template-columns: 1fr;
+  }
+}

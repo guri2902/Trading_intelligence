@@ -1,0 +1,26 @@
+/* Phase 11 — History additions.
+   Append these rules to frontend/app/globals.css. */
+.history-page-icon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--surface-active);color:var(--accent);border:1px solid var(--border)}
+.history-export{display:flex;align-items:center;gap:7px}
+.history-message{margin-bottom:16px}
+.history-filter-card{padding:17px 20px}
+.history-filters{display:grid;grid-template-columns:1.6fr repeat(4,minmax(130px,1fr));gap:10px;align-items:end}
+.history-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}
+.history-summary-card{padding:13px 15px}
+.history-summary-card span{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:5px}
+.history-summary-card strong{font-size:17px;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.history-win{color:var(--success)!important;font-weight:700}
+.history-loss{color:var(--danger)!important;font-weight:700}
+.history-table-card{margin-top:16px;padding:0;overflow:hidden}
+.history-table-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:18px 20px;border-bottom:1px solid var(--border)}
+.history-table{margin:0}
+.history-table tbody tr{transition:background .14s ease}
+.history-table tbody tr:hover{background:var(--surface-hover)}
+.history-table td{font-variant-numeric:tabular-nums;vertical-align:middle}
+.history-empty{padding:44px 20px;text-align:center;display:grid;gap:6px}
+.history-empty strong{color:var(--text-primary)}
+.history-empty span{font-size:12px;color:var(--text-secondary);line-height:1.5}
+.history-integrity{margin-top:14px}
+@media(max-width:1100px){.history-filters{grid-template-columns:repeat(3,minmax(0,1fr))}.history-filters label:first-child{grid-column:span 3}}
+@media(max-width:760px){.history-filters{grid-template-columns:1fr}.history-filters label:first-child{grid-column:auto}.history-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.history-table-head{flex-direction:column}}
+@media(max-width:520px){.history-summary{grid-template-columns:1fr}.history-export{display:none}}

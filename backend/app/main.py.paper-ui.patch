@@ -1,0 +1,7 @@
+# Phase 16C — add the new Paper UI API router to backend/app/main.py
+
+# Add alongside the other API imports:
+from .api.paper_ui import router as paper_ui_router
+
+# Add after the existing Phase 19 / Phase 20 registrations:
+app.include_router(paper_ui_router)

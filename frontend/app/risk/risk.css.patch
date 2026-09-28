@@ -1,0 +1,38 @@
+/* Phase 12 — Risk additions.
+   Append these rules to frontend/app/globals.css. */
+.risk-page-icon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--surface-active);color:var(--accent);border:1px solid var(--border)}
+.risk-message{margin-bottom:16px}
+.risk-hero{padding:20px;display:grid;grid-template-columns:auto 1fr auto;gap:15px;align-items:center;border-left:4px solid var(--accent)}
+.risk-hero-icon{width:45px;height:45px;border-radius:10px;display:grid;place-items:center;background:var(--surface-active);color:var(--accent);border:1px solid var(--border)}
+.risk-hero-copy h2{font-family:Georgia,serif;font-size:25px;font-weight:500;margin:4px 0 5px;color:var(--text-primary)}
+.risk-hero-copy p{margin:0;color:var(--text-secondary);font-size:12px;line-height:1.5;max-width:750px}
+.risk-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:16px}
+.risk-metric{padding:14px 15px;min-width:0}
+.risk-metric>span{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px}
+.risk-metric>strong{display:block;font-size:18px;color:var(--text-primary);font-variant-numeric:tabular-nums;margin-bottom:7px}
+.risk-metric>small{display:inline-block}
+.risk-metric>em{display:block;margin-top:6px;font-size:11px;font-style:normal;color:var(--text-secondary)}
+.risk-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;margin-top:16px}
+.risk-panel{padding:20px}
+.risk-title{margin-top:5px;margin-bottom:16px}
+.risk-check-list{display:grid;gap:10px}
+.risk-check{display:grid;grid-template-columns:auto 1fr auto;gap:11px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:9px;background:var(--surface-hover);transition:transform .14s ease,border-color .14s ease}
+.risk-check:hover{transform:translateY(-1px);border-color:var(--accent)}
+.risk-check-marker{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--surface-active);color:var(--accent)}
+.risk-check strong{display:block;color:var(--text-primary);font-size:13px}
+.risk-check p{margin:4px 0 0;color:var(--text-secondary);font-size:11px;line-height:1.4}
+.risk-safety-box{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:14px;border:1px solid var(--border);border-radius:9px;background:var(--surface-hover)}
+.risk-lock{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:var(--surface-active);color:var(--accent);border:1px solid var(--border)}
+.risk-safety-box strong{color:var(--text-primary)}
+.risk-safety-box p{margin:5px 0 0;font-size:12px;color:var(--text-secondary);line-height:1.5}
+.risk-detail-row{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);font-size:12px}
+.risk-detail-row:last-child{border-bottom:0}
+.risk-detail-row span{color:var(--text-secondary)}
+.risk-detail-row strong{color:var(--text-primary);font-variant-numeric:tabular-nums}
+.risk-empty{padding:30px;text-align:center;border:1px dashed var(--border);border-radius:9px;background:var(--surface-hover);display:grid;gap:6px}
+.risk-empty strong{color:var(--text-primary)}
+.risk-empty span{font-size:12px;line-height:1.5;color:var(--text-secondary)}
+.risk-note{margin-top:16px;padding:17px 20px}
+@media(max-width:1100px){.risk-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.risk-grid{grid-template-columns:1fr}}
+@media(max-width:720px){.risk-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.risk-hero{grid-template-columns:auto 1fr}.risk-hero>.pill{grid-column:1/-1;justify-self:start}}
+@media(max-width:480px){.risk-metrics{grid-template-columns:1fr}.risk-check{grid-template-columns:auto 1fr}.risk-check>.pill{grid-column:2;justify-self:start}}

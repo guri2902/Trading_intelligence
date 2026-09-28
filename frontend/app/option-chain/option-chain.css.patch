@@ -1,0 +1,35 @@
+/* Phase 5 — Option Chain additions.
+   Append these rules to frontend/app/globals.css. */
+.option-toolbar{display:flex;justify-content:space-between;gap:12px;margin:16px 0}
+.segmented{display:flex;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:3px;box-shadow:var(--shadow-sm,none)}
+.segment{height:36px;padding:0 13px;border:0;border-radius:7px;background:transparent;color:var(--text-secondary);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.segment:hover{background:var(--surface-hover);color:var(--text-primary)}
+.segment.active{background:var(--surface-active);color:var(--accent)}
+.option-card{padding:0;overflow:hidden}
+.option-card-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:17px 18px;border-bottom:1px solid var(--border)}
+.legend{display:flex;gap:8px}
+.legend-item{font-size:11px;font-weight:800;letter-spacing:.08em;padding:5px 8px;border-radius:6px}
+.legend-item.ce{background:var(--success-bg);color:var(--success)}
+.legend-item.pe{background:var(--danger-bg);color:var(--danger)}
+.option-table{margin:0}
+.option-table th{text-align:center}
+.option-table td{text-align:right;font-variant-numeric:tabular-nums}
+.option-table .ce-head{background:color-mix(in srgb,var(--success-bg) 72%,var(--surface));color:var(--success)}
+.option-table .pe-head{background:color-mix(in srgb,var(--danger-bg) 72%,var(--surface));color:var(--danger)}
+.option-table .strike-head{background:var(--surface-active)}
+.option-table .ce-cell{background:color-mix(in srgb,var(--success-bg) 30%,transparent)}
+.option-table .pe-cell{background:color-mix(in srgb,var(--danger-bg) 30%,transparent)}
+.option-table .strike-cell{text-align:center;background:var(--surface)}
+.option-table tbody tr:hover td{filter:brightness(.985)}
+.atm-row td{box-shadow:inset 0 1px var(--accent),inset 0 -1px var(--accent)}
+.atm-row .strike-cell{background:var(--surface-active)}
+.near-atm-row .strike-cell{background:color-mix(in srgb,var(--surface-active) 45%,var(--surface))}
+.atm-pill{display:inline-block;margin-left:7px;padding:3px 5px;border-radius:5px;background:var(--accent);color:var(--accent-contrast);font-size:9px;letter-spacing:.06em;vertical-align:middle}
+.empty-state{padding:54px 24px;text-align:center}
+.empty-state-title{font-family:Georgia,serif;font-size:20px;color:var(--text-primary);margin-bottom:7px}
+.option-message{margin:0 0 14px}
+@media(max-width:760px){
+  .option-toolbar{align-items:stretch;flex-direction:column}
+  .segmented{overflow:auto}
+  .option-card-head{align-items:flex-start;flex-direction:column}
+}

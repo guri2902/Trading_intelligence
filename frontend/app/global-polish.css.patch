@@ -1,0 +1,291 @@
+/* Phase 14 — Global Polish & UX Hardening
+   Append to frontend/app/globals.css after the earlier phase patches. */
+
+:root {
+  --transition-fast: 140ms ease;
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+button, input, select, textarea {
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+button:not(:disabled) { cursor: pointer; }
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--text-primary);
+}
+
+/* Shared buttons / form controls */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.btn {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: .01em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  background: var(--accent-active);
+  border-color: var(--accent-active);
+  transform: translateY(0);
+}
+
+.btn.secondary {
+  color: var(--text-primary);
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.btn.secondary:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+
+input, select, textarea {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+
+input, select { padding: 0 11px; }
+
+textarea {
+  padding: 10px 11px;
+  min-height: 92px;
+  resize: vertical;
+}
+
+input::placeholder, textarea::placeholder { color: var(--text-tertiary); }
+
+input:hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+}
+
+/* Shared status pills */
+.pill {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: max-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.pill.good {
+  background: var(--success-bg);
+  border-color: color-mix(in srgb, var(--success) 22%, var(--border));
+  color: var(--success);
+}
+
+.pill.bad {
+  background: var(--danger-bg);
+  border-color: color-mix(in srgb, var(--danger) 22%, var(--border));
+  color: var(--danger);
+}
+
+.pill.warn {
+  background: var(--warning-bg);
+  border-color: color-mix(in srgb, var(--warning) 22%, var(--border));
+  color: var(--warning);
+}
+
+.pill.neutral {
+  background: var(--neutral-pill-bg);
+  border-color: color-mix(in srgb, var(--neutral-pill) 20%, var(--border));
+  color: var(--neutral-pill);
+}
+
+/* Shared table behavior */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table th, .table td { border-bottom: 1px solid var(--border); }
+
+.table th {
+  color: var(--text-tertiary);
+  background: var(--surface-hover);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.table tr:last-child td { border-bottom: 0; }
+
+.table tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
+.table tbody tr:hover { background: var(--surface-hover); }
+
+/* Shared states */
+.error {
+  border: 1px solid color-mix(in srgb, var(--danger) 28%, var(--border));
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: 9px;
+  padding: 11px 13px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.note {
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+  border-radius: 9px;
+  padding: 11px 13px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.small {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.eyebrow {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+/* Settings density preference */
+html[data-compact-tables="true"] .table th,
+html[data-compact-tables="true"] .table td {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+html[data-compact-tables="true"] .card { border-radius: 8px; }
+
+/* Dark mode / transition */
+html[data-theme="dark"] body { color-scheme: dark; }
+
+body, .card, input, select, textarea, .table th, .note, .error {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Mobile hardening */
+@media (max-width: 760px) {
+  .topbar { gap: 12px; }
+  .topbar > * { min-width: 0; }
+  .row { flex-wrap: wrap; }
+
+  h1, .section-title, .card h2, .card h3 {
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Print-friendly research output */
+@media print {
+  .sidebar, nav, .topbar button, .btn, .status, .note, .error {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .card {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "capital": 100000.0,
+  "per_trade_risk": 1000.0,
+  "daily_risk_budget": 2000.0,
+  "weekly_risk_budget": 5000.0,
+  "monthly_risk_budget": 10000.0,
+  "max_concurrent_risk": 2000.0,
+  "max_open_positions": 1,
+  "max_trades_per_day": 5,
+  "max_drawdown_pct": 5.0,
+  "square_off_time": "15:20",
+  "lot_sizes": {
+    "NIFTY": 65,
+    "BANKNIFTY": 30,
+    "FINNIFTY": 60,
+    "SENSEX": 20
+  }
+}

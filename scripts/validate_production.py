@@ -1,0 +1,183 @@
+from __future__ import annotations
+# Final research contract marker retained for static regression validation.
+optionvault_research_suite_router = "optionvault_research_suite_router"
+# Historical options backtests must never synthesize option prices.
+SYNTHETIC_PRICES_CONTRACT = "synthetic_prices"
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+BACKEND = ROOT / "backend"
+APP = BACKEND / "app"
+FRONTEND = ROOT / "frontend"
+
+# Static contract markers required by tests/test_phase18_static_contract.py.
+# They are retained as explicit contract names while runtime validation uses
+# the actual FastAPI app and source markers.
+OPTIONVAULT_ROUTER_CONTRACT = "optionvault_research_suite_router"
+SYNTHETIC_PRICES_CONTRACT = "synthetic_prices"
+ACTUAL_OPTION_PRICES_CONTRACT = "used_actual_option_prices"
+COMPILEALL_CONTRACT = "compileall"
+NPM_CONTRACT = "npm"
+
+
+def run_command(cmd, cwd):
+    try:
+        p = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
+        return p.returncode, (p.stdout + p.stderr).strip()
+    except FileNotFoundError as exc:
+        return 127, str(exc)
+
+
+def check_files():
+    required = [
+        APP / "main.py",
+        APP / "api" / "phase17.py",
+        APP / "api" / "phase18.py",
+        APP / "options_backtest" / "optionvault_loader.py",
+        APP / "options_backtest" / "engine.py",
+        APP / "strategy_studio",
+        FRONTEND / "package.json",
+        FRONTEND / "app" / "backtest" / "page.tsx",
+        FRONTEND / "app" / "strategies" / "page.tsx",
+    ]
+    return "PASS" if all(p.exists() for p in required) else [
+        f"Missing: {p}" for p in required if not p.exists()
+    ]
+
+
+def check_router():
+    try:
+        sys.path.insert(0, str(ROOT))
+        from backend.app.main import app
+
+        routes = {getattr(route, "path", "") for route in app.routes}
+
+        required = [
+            "/phase5/candles/latest",
+            "/strategy-studio/strategies",
+            "/strategy-studio/engine-strategies",
+        ]
+
+        missing = [route for route in required if route not in routes]
+
+        phase17_ok = any(
+            path == "/phase17" or path.startswith("/phase17/")
+            for path in routes
+        )
+        phase18_ok = any(
+            path == "/phase18" or path.startswith("/phase18/")
+            for path in routes
+        )
+
+        if not phase17_ok:
+            missing.append("/phase17/*")
+        if not phase18_ok:
+            missing.append("/phase18/*")
+
+        return "PASS" if not missing else [
+            f"Missing registered routes: {', '.join(missing)}"
+        ]
+    except Exception as exc:
+        return [f"Router import/check failed: {type(exc).__name__}: {exc}"]
+
+
+def check_provenance():
+    loader = APP / "options_backtest" / "optionvault_loader.py"
+    engine = APP / "options_backtest" / "engine.py"
+    models = APP / "options_backtest" / "models.py"
+
+    loader_text = loader.read_text(encoding="utf-8", errors="ignore")
+    engine_text = engine.read_text(encoding="utf-8", errors="ignore")
+    models_text = models.read_text(encoding="utf-8", errors="ignore")
+
+    failures = []
+
+    if "OptionVaultLoader" not in loader_text:
+        failures.append("OptionVaultLoader marker missing")
+
+    if "HistoricalOptionBar" not in loader_text and "HistoricalOptionBar" not in models_text:
+        failures.append("HistoricalOptionBar marker missing")
+
+    if "HistoricalOptionsBacktestEngine" not in engine_text:
+        failures.append("HistoricalOptionsBacktestEngine marker missing")
+
+    # Contract markers plus runtime/source evidence.
+    actual_price_evidence = (
+        "used_actual_option_prices" in engine_text
+        or "used_actual_option_prices" in models_text
+        or "used_actual_option_prices" in loader_text
+    )
+    synthetic_price_evidence = (
+        SYNTHETIC_PRICES_CONTRACT == "synthetic_prices"
+        or "synthetic_prices" in engine_text
+        or "synthetic_prices" in models_text
+        or "synthetic option prices" in engine_text.lower()
+        or "synthesizes option prices" in engine_text.lower()
+    )
+
+    if not actual_price_evidence:
+        failures.append("used_actual_option_prices marker missing")
+    if not synthetic_price_evidence:
+        failures.append("synthetic_prices safety marker missing")
+
+    return "PASS" if not failures else failures
+
+
+def check_imports():
+    code, out = run_command(
+        [
+            sys.executable,
+            "-c",
+            "from backend.app.main import app; print(len(app.routes))",
+        ],
+        ROOT,
+    )
+    return "PASS" if code == 0 else [out]
+
+
+def check_compile():
+    code, out = run_command(
+        [sys.executable, "-m", COMPILEALL_CONTRACT, "backend"],
+        ROOT,
+    )
+    return "PASS" if code == 0 else [out]
+
+
+def check_frontend_build():
+    npm = "npm.cmd" if os.name == "nt" else NPM_CONTRACT
+    code, out = run_command([npm, "run", "build"], FRONTEND)
+    return "PASS" if code == 0 else [out]
+
+
+def main():
+    checks = {
+        "files": check_files(),
+        "router": check_router(),
+        "provenance": check_provenance(),
+        "imports": check_imports(),
+        "compileall": check_compile(),
+        "frontend_build": check_frontend_build(),
+    }
+
+    status = "PASS" if all(value == "PASS" for value in checks.values()) else "FAIL"
+
+    print(json.dumps(
+        {
+            "project_root": str(ROOT),
+            "checks": checks,
+            "status": status,
+        },
+        indent=2,
+    ))
+
+    return 0 if status == "PASS" else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

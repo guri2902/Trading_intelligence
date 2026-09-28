@@ -1,0 +1,7 @@
+# Phase 16D — register market-data UI endpoints in backend/app/main.py
+
+# Add with the other API imports:
+from .api.market_data_ui import router as market_data_ui_router
+
+# Add with the other app.include_router(...) calls:
+app.include_router(market_data_ui_router)

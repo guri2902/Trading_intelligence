@@ -1,0 +1,125 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { Shell } from "../../components/Shell";
+
+const API = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+
+type Strategy = { id: string; name: string; status: string; engine_strategy?: string | null };
+type Result = any;
+
+function money(v: any) { return v == null ? "—" : `₹${Number(v).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`; }
+function pct(v: any) { return v == null ? "—" : `${Number(v).toFixed(2)}%`; }
+function num(v: any) { return v == null ? "—" : Number(v).toFixed(2); }
+
+function Curve({ trades }: { trades: any[] }) {
+  const points = trades.map((t, i) => ({ x: i, y: Number(t.net_pnl || 0) }))
+    .reduce((acc: any[], t, i) => { acc.push({ x: i, y: (acc[i - 1]?.y || 0) + t.y }); return acc; }, []);
+  if (!points.length) return <div className="small">No trade equity curve available.</div>;
+  const min = Math.min(...points.map(p => p.y), 0), max = Math.max(...points.map(p => p.y), 0), span = Math.max(max - min, 1);
+  const path = points.map((p, i) => `${i ? "L" : "M"}${(i / Math.max(points.length - 1, 1)) * 100} ${100 - ((p.y - min) / span) * 100}`).join(" ");
+  return <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{width:"100%",height:220,display:"block"}}><path d={path} fill="none" stroke="currentColor" strokeWidth="0.9" vectorEffect="non-scaling-stroke" /></svg>;
+}
+
+export default function BacktestPage() {
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const [strategyId, setStrategyId] = useState("");
+  const [rows, setRows] = useState<any[]>([]);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [limit, setLimit] = useState("500");
+  const [strikeReference, setStrikeReference] = useState("25000");
+  const [expiry, setExpiry] = useState("");
+  const [strikeMode, setStrikeMode] = useState("ATM");
+  const [strikeOffset, setStrikeOffset] = useState("0");
+  const [stopPct, setStopPct] = useState("0.15");
+  const [targetRR, setTargetRR] = useState("1.5");
+  const [capital, setCapital] = useState("100000");
+  const [quantity, setQuantity] = useState("1");
+  const [result, setResult] = useState<Result | null>(null);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+  const [running, setRunning] = useState(false);
+  const [tab, setTab] = useState("overview");
+
+  useEffect(() => {
+    fetch(`${API}/strategy-studio/strategies`, { cache: "no-store" })
+      .then(r => r.json()).then(d => {
+        const xs = (d.strategies || []).filter((x: Strategy) => x.status !== "DISABLED");
+        setStrategies(xs); if (xs.length) setStrategyId(xs[0].id);
+      }).catch(() => setError("Unable to load strategies"));
+    loadCandles();
+  }, []);
+
+  async function loadCandles() {
+    setError(""); setStatus("Loading persisted PASS-quality NIFTY candles…");
+    try {
+      const q = new URLSearchParams({ canonical_key:"NSE_INDEX|Nifty 50", timeframe:"minutes:5", limit });
+      if (fromDate) q.set("from_date", fromDate); if (toDate) q.set("to_date", toDate);
+      const res = await fetch(`${API}/backtest-data/candles?${q.toString()}`, { cache:"no-store" });
+      const body = await res.json(); if (!res.ok) throw new Error(body.detail || "Candle load failed");
+      setRows(body.rows || []); setStatus(`${body.count || 0} persisted candles loaded · ${body.from || "—"} → ${body.to || "—"}`);
+    } catch (e:any) { setError(e.message || "Candle load failed"); setStatus(""); }
+  }
+
+  const selected = useMemo(() => strategies.find(s => s.id === strategyId), [strategies, strategyId]);
+  const m = result?.base_backtest?.metrics || {};
+  const q = result?.qualification || {};
+  const quality = result?.quality || {};
+  const wf = result?.walkforward || {};
+  const oos = wf.oos_summary || {};
+  const rob = result?.robustness || {};
+  const regime = result?.regime?.regime_analysis || {};
+  const trades = result?.base_backtest?.trades || [];
+
+  async function runSuite() {
+    setError(""); setResult(null); setTab("overview");
+    if (!selected) return setError("Select a strategy");
+    if (rows.length < 30) return setError("Load at least 30 persisted NIFTY candles");
+    setRunning(true); setStatus("Running OptionVault research suite…");
+    try {
+      const res = await fetch(`${API}/backtest/optionvault/research-suite`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ underlying_rows: rows, strategy_name: selected.name, preferred_strategy: selected.engine_strategy || selected.name,
+          strike_reference:Number(strikeReference), expiry:expiry || null, strike_mode:strikeMode, strike_offset:Number(strikeOffset), stop_pct:Number(stopPct), target_rr:Number(targetRR),
+          config:{initial_capital:Number(capital), quantity:Number(quantity), slippage_bps:5, latency_bars:0}, monte_carlo_simulations:1000, monte_carlo_seed:42 })
+      });
+      const body = await res.json(); if (!res.ok) throw new Error(body.detail || "Research suite failed");
+      setResult(body); setStatus("Research suite complete");
+    } catch (e:any) { setError(e.message || "Research suite failed"); setStatus(""); }
+    finally { setRunning(false); }
+  }
+
+  const tabs = ["overview","OOS","robustness","regime","quality"];
+  return <Shell>
+    <div className="topbar"><div><div className="eyebrow">Research Studio</div><h1>OptionVault Backtest</h1><div className="small">Real candles → Strategy Studio → actual OptionVault option prices → OOS → robustness → regime → qualification</div></div><div className="pill good">ACTUAL PRICES ONLY</div></div>
+    <div className="grid cols2 section">
+      <div className="card">
+        <h3>Dataset & strategy</h3>
+        <label>Strategy<select value={strategyId} onChange={e=>setStrategyId(e.target.value)}><option value="">Select strategy</option>{strategies.map(s=><option key={s.id} value={s.id}>{s.name}{s.engine_strategy?` · ${s.engine_strategy}`:""}</option>)}</select></label>
+        <div className="grid cols2"><label>From<input type="date" value={fromDate} onChange={e=>setFromDate(e.target.value)} /></label><label>To<input type="date" value={toDate} onChange={e=>setToDate(e.target.value)} /></label></div>
+        <div className="grid cols2"><label>Bars<input type="number" min="30" max="5000" value={limit} onChange={e=>setLimit(e.target.value)} /></label><label>Strike reference<input type="number" value={strikeReference} onChange={e=>setStrikeReference(e.target.value)} /></label></div>
+        <div className="grid cols2"><label>Expiry (optional)<input placeholder="YYYY-MM-DD" value={expiry} onChange={e=>setExpiry(e.target.value)} /></label><label>Strike mode<select value={strikeMode} onChange={e=>setStrikeMode(e.target.value)}><option>ATM</option><option>OFFSET</option><option>ATM_OFFSET</option></select></label></div>
+        <div className="grid cols2"><label>Strike offset<input type="number" value={strikeOffset} onChange={e=>setStrikeOffset(e.target.value)} /></label><label>Stop %<input type="number" step="0.01" value={stopPct} onChange={e=>setStopPct(e.target.value)} /></label></div>
+        <div className="grid cols2"><label>Target R:R<input type="number" step="0.1" value={targetRR} onChange={e=>setTargetRR(e.target.value)} /></label><label>Quantity<input type="number" min="1" value={quantity} onChange={e=>setQuantity(e.target.value)} /></label></div>
+        <label>Initial capital<input type="number" value={capital} onChange={e=>setCapital(e.target.value)} /></label>
+        <div className="section"><button className="btn secondary" onClick={loadCandles} disabled={running}>Reload historical data</button><button className="btn" onClick={runSuite} disabled={running}>{running?"Running…":"Run Research Suite"}</button></div>
+        {status && <div className="small">{status}</div>}{error && <div className="note">{error}</div>}
+      </div>
+      <div className="card">
+        <h3>Research status</h3>
+        {!result ? <div className="small">No result yet. This screen never fabricates backtest metrics.</div> : <>
+          <div className="grid cols2"><div className="note"><div className="small">Quality</div><b>{quality.classification || "—"} · {num(quality.quality_score)}</b></div><div className="note"><div className="small">Promotion</div><b>{q.promotion_gate || "—"}</b></div><div className="note"><div className="small">Net P&L</div><b>{money(m.net_profit)}</b></div><div className="note"><div className="small">Win rate</div><b>{pct(m.win_rate_pct)}</b></div><div className="note"><div className="small">Profit factor</div><b>{num(m.profit_factor)}</b></div><div className="note"><div className="small">Max DD</div><b>{pct(oos.max_drawdown_pct ?? m.max_drawdown_pct)}</b></div></div>
+          <div className="note section"><b>Contract</b><div className="small">{result.base_backtest?.selection ? `${result.base_backtest.selection.underlying_symbol} · ${result.base_backtest.selection.expiry} · ${result.base_backtest.selection.strike} ${result.base_backtest.selection.option_type}` : "—"}</div><div className="small">Source: {result.data_source} · Synthetic: {String(result.synthetic_prices)}</div></div>
+        </>}
+      </div>
+    </div>
+    {result && <div className="card section"><div className="section"><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{tabs.map(t=><button key={t} className={tab===t?"btn":"btn secondary"} onClick={()=>setTab(t)}>{t}</button>)}</div></div>
+      {tab==="overview" && <><h3>Equity curve</h3><Curve trades={trades}/><div className="grid cols2 section"><div><div className="small">Base trades</div><b>{m.total_trades ?? trades.length}</b></div><div><div className="small">OOS trades</div><b>{oos.aggregate_oos_trades ?? "—"}</b></div></div></>}
+      {tab==="OOS" && <><h3>Walk-forward / OOS</h3><div className="grid cols2"><div className="note">Qualification rate <b>{pct(oos.qualification_rate_pct)}</b></div><div className="note">OOS net profit <b>{money(oos.aggregate_oos_net_profit)}</b></div><div className="note">Windows <b>{oos.windows_evaluated ?? "—"}</b></div><div className="note">OOS trades <b>{oos.aggregate_oos_trades ?? "—"}</b></div></div></>}
+      {tab==="robustness" && <><h3>Monte Carlo + cost sensitivity</h3><div className="grid cols2"><div className="note">Loss probability <b>{pct(rob.monte_carlo?.probability_of_loss_pct)}</b></div><div className="note">P95 DD <b>{money(rob.monte_carlo?.p95_max_drawdown)}</b></div><div className="note">MC status <b>{rob.monte_carlo?.status || "—"}</b></div><div className="note">Baseline P&L <b>{money(rob.cost_slippage_sensitivity?.baseline?.net_pnl)}</b></div></div></>}
+      {tab==="regime" && <><h3>Regime evidence</h3><div className="grid cols2">{Object.entries(regime.regimes || {}).map(([k,v]: any)=><div className="note" key={k}><b>{k}</b><div className="small">Trades {v.trades ?? 0} · P&L {money(v.net_profit)}</div></div>)}</div><div className="small section">Coverage: {pct(regime.regime_coverage_pct)} · Look-ahead safe: {String(regime.lookahead_safe)}</div></>}
+      {tab==="quality" && <><h3>Qualification & quality</h3><div className="grid cols2"><div className="note">Score <b>{num(quality.quality_score)}</b></div><div className="note">Class <b>{quality.classification || "—"}</b></div><div className="note">Active <b>{String(quality.active)}</b></div><div className="note">Why active <b>{quality.why_active || "—"}</b></div></div><div className="note section"><b>When to avoid</b><div className="small">{quality.when_to_avoid || "—"}</div></div></>}
+    </div>}
+  </Shell>;
+}

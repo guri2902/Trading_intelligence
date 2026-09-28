@@ -1,0 +1,124 @@
+from __future__ import annotations
+
+import csv
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Iterable
+
+from .models import HistoricalOptionBar
+
+
+@dataclass(frozen=True)
+class OptionVaultContract:
+    path: str
+    underlying_symbol: str
+    expiry: str
+    strike: float
+    option_type: str
+    rows: int
+    first_timestamp: str
+    last_timestamp: str
+
+
+class OptionVaultLoader:
+    """Read real OptionVault option candles into HistoricalOptionBar.
+
+    No synthetic prices are created. Files are read from the existing local
+    data/optionvault tree and must contain the OptionVault documented schema.
+    """
+
+    REQUIRED = {
+        "datetime", "open", "high", "low", "close", "volume", "oi",
+        "name", "strike", "expiry", "side"
+    }
+
+    def __init__(self, root_dir: str | Path = "data/optionvault") -> None:
+        self.root_dir = Path(root_dir).expanduser()
+
+    def option_files(self) -> list[Path]:
+        root = self.root_dir / "samples" / "derivatives" / "options"
+        if not root.exists():
+            return []
+        return sorted(p for p in root.rglob("*.csv") if p.is_file())
+
+    def discover_contracts(self) -> list[OptionVaultContract]:
+        out: list[OptionVaultContract] = []
+        for path in self.option_files():
+            try:
+                rows = list(self._read(path))
+            except (OSError, ValueError, KeyError):
+                continue
+            if not rows:
+                continue
+            first, last = rows[0], rows[-1]
+            out.append(
+                OptionVaultContract(
+                    path=str(path),
+                    underlying_symbol=str(first.underlying_symbol),
+                    expiry=str(first.expiry.date()),
+                    strike=float(first.strike),
+                    option_type=str(first.option_type),
+                    rows=len(rows),
+                    first_timestamp=first.timestamp.isoformat(),
+                    last_timestamp=last.timestamp.isoformat(),
+                )
+            )
+        return out
+
+    def load_contract(self, path: str | Path) -> list[HistoricalOptionBar]:
+        target = Path(path)
+        root = self.root_dir.resolve()
+        resolved = target.resolve()
+        if root not in resolved.parents and resolved != root:
+            raise ValueError("OPTIONVAULT_PATH_OUTSIDE_ROOT")
+        if not resolved.exists() or resolved.suffix.lower() != ".csv":
+            raise FileNotFoundError(str(resolved))
+        return list(self._read(resolved))
+
+    def _read(self, path: Path) -> Iterable[HistoricalOptionBar]:
+        with path.open("r", encoding="utf-8-sig", newline="") as fh:
+            reader = csv.DictReader(fh)
+            fields = {str(x).strip() for x in (reader.fieldnames or [])}
+            missing = self.REQUIRED - fields
+            if missing:
+                raise ValueError(f"OPTIONVAULT_MISSING_COLUMNS:{','.join(sorted(missing))}")
+            for row in reader:
+                side = str(row["side"]).strip().upper()
+                if side not in {"CE", "PE"}:
+                    continue
+                yield HistoricalOptionBar(
+                    timestamp=self._dt(row["datetime"]),
+                    contract_key=path.stem,
+                    underlying_symbol=str(row["name"]).strip(),
+                    expiry=self._date(row["expiry"]),
+                    strike=float(row["strike"]),
+                    option_type=side,
+                    open=float(row["open"]),
+                    high=float(row["high"]),
+                    low=float(row["low"]),
+                    close=float(row["close"]),
+                    volume=float(row.get("volume") or 0),
+                    OI=float(row.get("oi") or 0),
+                    bid=None,
+                    ask=None,
+                    underlying_close=None,
+                )
+
+    @staticmethod
+    def _dt(value: str) -> datetime:
+        value = value.strip().replace("Z", "+00:00")
+        return datetime.fromisoformat(value)
+
+    @staticmethod
+    def _date(value: str) -> datetime:
+        value = value.strip()
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            for fmt in ("%Y-%m-%d", "%d-%b-%Y", "%d-%m-%Y", "%d/%m/%Y"):
+                try:
+                    return datetime.strptime(value, fmt)
+                except ValueError:
+                    pass
+        raise ValueError(f"OPTIONVAULT_BAD_EXPIRY:{value}")

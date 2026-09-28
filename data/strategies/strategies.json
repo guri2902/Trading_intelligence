@@ -1,0 +1,1962 @@
+[
+  {
+    "id": "9c00ae8482dd4840a428d4b308b0371d",
+    "name": "hgjhv",
+    "description": "",
+    "source": "USER",
+    "status": "DRAFT",
+    "instruments": [
+      "NIFTY"
+    ],
+    "timeframe": "5m",
+    "engine_strategy": null,
+    "rules": {
+      "condition_logic": "ALL",
+      "direction": "AUTO",
+      "option_action": "AUTO",
+      "expiry_mode": "AUTO",
+      "strike_mode": "ATM",
+      "strike_offset": 0,
+      "legs": [],
+      "stop_mode": "ATR",
+      "stop_value": 1.0,
+      "target_mode": "RR",
+      "target_value": 1.5,
+      "max_trades_per_day": 1,
+      "entry_conditions": [
+        {
+          "field": "price",
+          "operator": "GT",
+          "value": 0.0
+        }
+      ],
+      "exit_conditions": [
+        {
+          "field": "price",
+          "operator": "GT",
+          "value": 0.0
+        }
+      ]
+    },
+    "version": 1,
+    "versions": [],
+    "created_at": "2026-09-12T16:05:49.982138Z",
+    "updated_at": "2026-09-12T16:05:49.982138Z"
+  },
+  {
+    "id": "770a1541bda740c7978ed7b25d69274a",
+    "name": "VWAP Pullback (Custom)",
+    "description": "Editable Strategy Studio copy of VWAP Pullback",
+    "source": "USER",
+    "status": "DRAFT",
+    "instruments": [
+      "NIFTY"
+    ],
+    "timeframe": "5m",
+    "engine_strategy": "VWAP_PULLBACK",
+    "rules": {
+      "condition_logic": "ALL",
+      "direction": "AUTO",
+      "option_action": "AUTO",
+      "expiry_mode": "AUTO",
+      "strike_mode": "ATM",
+      "strike_offset": 0,
+      "legs": [],
+      "stop_mode": "ATR",
+      "stop_value": 1.0,
+      "target_mode": "RR",
+      "target_value": 1.5,
+      "max_trades_per_day": 1,
+      "entry_conditions": [],
+      "exit_conditions": []
+    },
+    "version": 1,
+    "versions": [],
+    "created_at": "2026-09-12T21:26:33.613439Z",
+    "updated_at": "2026-09-12T21:26:33.613439Z"
+  },
+  {
+    "id": "8163f4770cef41dfb58803ff9f58b6d4",
+    "name": "MY NIFTY Iron Condor - Weekly",
+    "description": "",
+    "source": "USER",
+    "status": "DRAFT",
+    "instruments": [
+      "NIFTY"
+    ],
+    "timeframe": "5m",
+    "engine_strategy": "OPTION_DIRECTIONAL",
+    "rules": {
+      "condition_logic": "ALL",
+      "direction": "AUTO",
+      "option_action": "AUTO",
+      "expiry_mode": "AUTO",
+      "strike_mode": "ATM",
+      "strike_offset": 0,
+      "legs": [
+        {
+          "action": "SELL",
+          "option_type": "CE",
+          "expiry_mode": "NEAREST",
+          "expiry": null,
+          "strike_mode": "ATM_PLUS",
+          "strike": null,
+          "strike_offset": 4,
+          "lots": 1,
+          "price": null
+        },
+        {
+          "action": "BUY",
+          "option_type": "CE",
+          "expiry_mode": "NEAREST",
+          "expiry": null,
+          "strike_mode": "ATM_PLUS",
+          "strike": null,
+          "strike_offset": 8,
+          "lots": 1,
+          "price": null
+        },
+        {
+          "action": "SELL",
+          "option_type": "PE",
+          "expiry_mode": "NEAREST",
+          "expiry": null,
+          "strike_mode": "ATM_PLUS",
+          "strike": null,
+          "strike_offset": 4,
+          "lots": 1,
+          "price": null
+        },
+        {
+          "action": "BUY",
+          "option_type": "PE",
+          "expiry_mode": "NEAREST",
+          "expiry": null,
+          "strike_mode": "ATM_PLUS",
+          "strike": null,
+          "strike_offset": 8,
+          "lots": 1,
+          "price": null
+        }
+      ],
+      "stop_mode": "PERCENT",
+      "stop_value": 50.0,
+      "target_mode": "PERCENT",
+      "target_value": 50.0,
+      "max_trades_per_day": 1,
+      "entry_conditions": [],
+      "exit_conditions": []
+    },
+    "version": 6,
+    "versions": [
+      {
+        "version": 1,
+        "saved_at": "2026-09-14T14:06:56.931930Z",
+        "snapshot": {
+          "id": "8163f4770cef41dfb58803ff9f58b6d4",
+          "name": "MY NIFTY Iron Condor - Weekly",
+          "description": "",
+          "source": "USER",
+          "status": "DRAFT",
+          "instruments": [
+            "NIFTY"
+          ],
+          "timeframe": "5m",
+          "engine_strategy": null,
+          "rules": {
+            "condition_logic": "ALL",
+            "direction": "AUTO",
+            "option_action": "AUTO",
+            "expiry_mode": "AUTO",
+            "strike_mode": "ATM",
+            "strike_offset": 0,
+            "legs": [],
+            "stop_mode": "PERCENT",
+            "stop_value": 50.0,
+            "target_mode": "PERCENT",
+            "target_value": 50.0,
+            "max_trades_per_day": 1,
+            "entry_conditions": [],
+            "exit_conditions": []
+          },
+          "version": 1,
+          "versions": [],
+          "created_at": "2026-09-14T13:51:50.423858Z",
+          "updated_at": "2026-09-14T13:51:50.423858Z"
+        }
+      },
+      {
+        "version": 2,
+        "saved_at": "2026-09-14T14:06:59.086369Z",
+        "snapshot": {
+          "id": "8163f4770cef41dfb58803ff9f58b6d4",
+          "name": "MY NIFTY Iron Condor - Weekly",
+          "description": "",
+          "source": "USER",
+          "status": "DRAFT",
+          "instruments": [
+            "NIFTY"
+          ],
+          "timeframe": "5m",
+          "engine_strategy": null,
+          "rules": {
+            "condition_logic": "ALL",
+            "direction": "AUTO",
+            "option_action": "AUTO",
+            "expiry_mode": "AUTO",
+            "strike_mode": "ATM",
+            "strike_offset": 0,
+            "legs": [
+              {
+                "action": "SELL",
+                "option_type": "CE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_PLUS",
+                "strike": null,
+                "strike_offset": 4,
+                "lots": 1,
+                "price": null
+              },
+              {
+                "action": "BUY",
+                "option_type": "CE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_PLUS",
+                "strike": null,
+                "strike_offset": 8,
+                "lots": 1,
+                "price": null
+              },
+              {
+                "action": "SELL",
+                "option_type": "PE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_MINUS",
+                "strike": null,
+                "strike_offset": 4,
+                "lots": 1,
+                "price": null
+              },
+              {
+                "action": "BUY",
+                "option_type": "PE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_MINUS",
+                "strike": null,
+                "strike_offset": 8,
+                "lots": 1,
+                "price": null
+              }
+            ],
+            "stop_mode": "PERCENT",
+            "stop_value": 50.0,
+            "target_mode": "PERCENT",
+            "target_value": 50.0,
+            "max_trades_per_day": 1,
+            "entry_conditions": [],
+            "exit_conditions": []
+          },
+          "version": 2,
+          "versions": [
+            {
+              "version": 1,
+              "saved_at": "2026-09-14T14:06:56.931930Z",
+              "snapshot": {
+                "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                "name": "MY NIFTY Iron Condor - Weekly",
+                "description": "",
+                "source": "USER",
+                "status": "DRAFT",
+                "instruments": [
+                  "NIFTY"
+                ],
+                "timeframe": "5m",
+                "engine_strategy": null,
+                "rules": {
+                  "condition_logic": "ALL",
+                  "direction": "AUTO",
+                  "option_action": "AUTO",
+                  "expiry_mode": "AUTO",
+                  "strike_mode": "ATM",
+                  "strike_offset": 0,
+                  "legs": [],
+                  "stop_mode": "PERCENT",
+                  "stop_value": 50.0,
+                  "target_mode": "PERCENT",
+                  "target_value": 50.0,
+                  "max_trades_per_day": 1,
+                  "entry_conditions": [],
+                  "exit_conditions": []
+                },
+                "version": 1,
+                "versions": [],
+                "created_at": "2026-09-14T13:51:50.423858Z",
+                "updated_at": "2026-09-14T13:51:50.423858Z"
+              }
+            }
+          ],
+          "created_at": "2026-09-14T13:51:50.423858Z",
+          "updated_at": "2026-09-14T14:06:56.931930Z"
+        }
+      },
+      {
+        "version": 3,
+        "saved_at": "2026-09-14T14:06:59.973550Z",
+        "snapshot": {
+          "id": "8163f4770cef41dfb58803ff9f58b6d4",
+          "name": "MY NIFTY Iron Condor - Weekly",
+          "description": "",
+          "source": "USER",
+          "status": "DRAFT",
+          "instruments": [
+            "NIFTY"
+          ],
+          "timeframe": "5m",
+          "engine_strategy": null,
+          "rules": {
+            "condition_logic": "ALL",
+            "direction": "AUTO",
+            "option_action": "AUTO",
+            "expiry_mode": "AUTO",
+            "strike_mode": "ATM",
+            "strike_offset": 0,
+            "legs": [
+              {
+                "action": "SELL",
+                "option_type": "CE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_PLUS",
+                "strike": null,
+                "strike_offset": 4,
+                "lots": 1,
+                "price": null
+              },
+              {
+                "action": "BUY",
+                "option_type": "CE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_PLUS",
+                "strike": null,
+                "strike_offset": 8,
+                "lots": 1,
+                "price": null
+              },
+              {
+                "action": "SELL",
+                "option_type": "PE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_MINUS",
+                "strike": null,
+                "strike_offset": 4,
+                "lots": 1,
+                "price": null
+              },
+              {
+                "action": "BUY",
+                "option_type": "PE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_MINUS",
+                "strike": null,
+                "strike_offset": 8,
+                "lots": 1,
+                "price": null
+              }
+            ],
+            "stop_mode": "PERCENT",
+            "stop_value": 50.0,
+            "target_mode": "PERCENT",
+            "target_value": 50.0,
+            "max_trades_per_day": 1,
+            "entry_conditions": [],
+            "exit_conditions": []
+          },
+          "version": 3,
+          "versions": [
+            {
+              "version": 1,
+              "saved_at": "2026-09-14T14:06:56.931930Z",
+              "snapshot": {
+                "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                "name": "MY NIFTY Iron Condor - Weekly",
+                "description": "",
+                "source": "USER",
+                "status": "DRAFT",
+                "instruments": [
+                  "NIFTY"
+                ],
+                "timeframe": "5m",
+                "engine_strategy": null,
+                "rules": {
+                  "condition_logic": "ALL",
+                  "direction": "AUTO",
+                  "option_action": "AUTO",
+                  "expiry_mode": "AUTO",
+                  "strike_mode": "ATM",
+                  "strike_offset": 0,
+                  "legs": [],
+                  "stop_mode": "PERCENT",
+                  "stop_value": 50.0,
+                  "target_mode": "PERCENT",
+                  "target_value": 50.0,
+                  "max_trades_per_day": 1,
+                  "entry_conditions": [],
+                  "exit_conditions": []
+                },
+                "version": 1,
+                "versions": [],
+                "created_at": "2026-09-14T13:51:50.423858Z",
+                "updated_at": "2026-09-14T13:51:50.423858Z"
+              }
+            },
+            {
+              "version": 2,
+              "saved_at": "2026-09-14T14:06:59.086369Z",
+              "snapshot": {
+                "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                "name": "MY NIFTY Iron Condor - Weekly",
+                "description": "",
+                "source": "USER",
+                "status": "DRAFT",
+                "instruments": [
+                  "NIFTY"
+                ],
+                "timeframe": "5m",
+                "engine_strategy": null,
+                "rules": {
+                  "condition_logic": "ALL",
+                  "direction": "AUTO",
+                  "option_action": "AUTO",
+                  "expiry_mode": "AUTO",
+                  "strike_mode": "ATM",
+                  "strike_offset": 0,
+                  "legs": [
+                    {
+                      "action": "SELL",
+                      "option_type": "CE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_PLUS",
+                      "strike": null,
+                      "strike_offset": 4,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "BUY",
+                      "option_type": "CE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_PLUS",
+                      "strike": null,
+                      "strike_offset": 8,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "SELL",
+                      "option_type": "PE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_MINUS",
+                      "strike": null,
+                      "strike_offset": 4,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "BUY",
+                      "option_type": "PE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_MINUS",
+                      "strike": null,
+                      "strike_offset": 8,
+                      "lots": 1,
+                      "price": null
+                    }
+                  ],
+                  "stop_mode": "PERCENT",
+                  "stop_value": 50.0,
+                  "target_mode": "PERCENT",
+                  "target_value": 50.0,
+                  "max_trades_per_day": 1,
+                  "entry_conditions": [],
+                  "exit_conditions": []
+                },
+                "version": 2,
+                "versions": [
+                  {
+                    "version": 1,
+                    "saved_at": "2026-09-14T14:06:56.931930Z",
+                    "snapshot": {
+                      "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                      "name": "MY NIFTY Iron Condor - Weekly",
+                      "description": "",
+                      "source": "USER",
+                      "status": "DRAFT",
+                      "instruments": [
+                        "NIFTY"
+                      ],
+                      "timeframe": "5m",
+                      "engine_strategy": null,
+                      "rules": {
+                        "condition_logic": "ALL",
+                        "direction": "AUTO",
+                        "option_action": "AUTO",
+                        "expiry_mode": "AUTO",
+                        "strike_mode": "ATM",
+                        "strike_offset": 0,
+                        "legs": [],
+                        "stop_mode": "PERCENT",
+                        "stop_value": 50.0,
+                        "target_mode": "PERCENT",
+                        "target_value": 50.0,
+                        "max_trades_per_day": 1,
+                        "entry_conditions": [],
+                        "exit_conditions": []
+                      },
+                      "version": 1,
+                      "versions": [],
+                      "created_at": "2026-09-14T13:51:50.423858Z",
+                      "updated_at": "2026-09-14T13:51:50.423858Z"
+                    }
+                  }
+                ],
+                "created_at": "2026-09-14T13:51:50.423858Z",
+                "updated_at": "2026-09-14T14:06:56.931930Z"
+              }
+            }
+          ],
+          "created_at": "2026-09-14T13:51:50.423858Z",
+          "updated_at": "2026-09-14T14:06:59.086369Z"
+        }
+      },
+      {
+        "version": 4,
+        "saved_at": "2026-09-14T14:18:50.628092Z",
+        "snapshot": {
+          "id": "8163f4770cef41dfb58803ff9f58b6d4",
+          "name": "MY NIFTY Iron Condor - Weekly",
+          "description": "",
+          "source": "USER",
+          "status": "DRAFT",
+          "instruments": [
+            "NIFTY"
+          ],
+          "timeframe": "5m",
+          "engine_strategy": null,
+          "rules": {
+            "condition_logic": "ALL",
+            "direction": "AUTO",
+            "option_action": "AUTO",
+            "expiry_mode": "AUTO",
+            "strike_mode": "ATM",
+            "strike_offset": 0,
+            "legs": [
+              {
+                "action": "SELL",
+                "option_type": "CE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_PLUS",
+                "strike": null,
+                "strike_offset": 4,
+                "lots": 1,
+                "price": null
+              },
+              {
+                "action": "BUY",
+                "option_type": "CE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_PLUS",
+                "strike": null,
+                "strike_offset": 8,
+                "lots": 1,
+                "price": null
+              },
+              {
+                "action": "SELL",
+                "option_type": "PE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_MINUS",
+                "strike": null,
+                "strike_offset": 4,
+                "lots": 1,
+                "price": null
+              },
+              {
+                "action": "BUY",
+                "option_type": "PE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_MINUS",
+                "strike": null,
+                "strike_offset": 8,
+                "lots": 1,
+                "price": null
+              }
+            ],
+            "stop_mode": "PERCENT",
+            "stop_value": 50.0,
+            "target_mode": "PERCENT",
+            "target_value": 50.0,
+            "max_trades_per_day": 1,
+            "entry_conditions": [],
+            "exit_conditions": []
+          },
+          "version": 4,
+          "versions": [
+            {
+              "version": 1,
+              "saved_at": "2026-09-14T14:06:56.931930Z",
+              "snapshot": {
+                "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                "name": "MY NIFTY Iron Condor - Weekly",
+                "description": "",
+                "source": "USER",
+                "status": "DRAFT",
+                "instruments": [
+                  "NIFTY"
+                ],
+                "timeframe": "5m",
+                "engine_strategy": null,
+                "rules": {
+                  "condition_logic": "ALL",
+                  "direction": "AUTO",
+                  "option_action": "AUTO",
+                  "expiry_mode": "AUTO",
+                  "strike_mode": "ATM",
+                  "strike_offset": 0,
+                  "legs": [],
+                  "stop_mode": "PERCENT",
+                  "stop_value": 50.0,
+                  "target_mode": "PERCENT",
+                  "target_value": 50.0,
+                  "max_trades_per_day": 1,
+                  "entry_conditions": [],
+                  "exit_conditions": []
+                },
+                "version": 1,
+                "versions": [],
+                "created_at": "2026-09-14T13:51:50.423858Z",
+                "updated_at": "2026-09-14T13:51:50.423858Z"
+              }
+            },
+            {
+              "version": 2,
+              "saved_at": "2026-09-14T14:06:59.086369Z",
+              "snapshot": {
+                "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                "name": "MY NIFTY Iron Condor - Weekly",
+                "description": "",
+                "source": "USER",
+                "status": "DRAFT",
+                "instruments": [
+                  "NIFTY"
+                ],
+                "timeframe": "5m",
+                "engine_strategy": null,
+                "rules": {
+                  "condition_logic": "ALL",
+                  "direction": "AUTO",
+                  "option_action": "AUTO",
+                  "expiry_mode": "AUTO",
+                  "strike_mode": "ATM",
+                  "strike_offset": 0,
+                  "legs": [
+                    {
+                      "action": "SELL",
+                      "option_type": "CE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_PLUS",
+                      "strike": null,
+                      "strike_offset": 4,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "BUY",
+                      "option_type": "CE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_PLUS",
+                      "strike": null,
+                      "strike_offset": 8,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "SELL",
+                      "option_type": "PE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_MINUS",
+                      "strike": null,
+                      "strike_offset": 4,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "BUY",
+                      "option_type": "PE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_MINUS",
+                      "strike": null,
+                      "strike_offset": 8,
+                      "lots": 1,
+                      "price": null
+                    }
+                  ],
+                  "stop_mode": "PERCENT",
+                  "stop_value": 50.0,
+                  "target_mode": "PERCENT",
+                  "target_value": 50.0,
+                  "max_trades_per_day": 1,
+                  "entry_conditions": [],
+                  "exit_conditions": []
+                },
+                "version": 2,
+                "versions": [
+                  {
+                    "version": 1,
+                    "saved_at": "2026-09-14T14:06:56.931930Z",
+                    "snapshot": {
+                      "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                      "name": "MY NIFTY Iron Condor - Weekly",
+                      "description": "",
+                      "source": "USER",
+                      "status": "DRAFT",
+                      "instruments": [
+                        "NIFTY"
+                      ],
+                      "timeframe": "5m",
+                      "engine_strategy": null,
+                      "rules": {
+                        "condition_logic": "ALL",
+                        "direction": "AUTO",
+                        "option_action": "AUTO",
+                        "expiry_mode": "AUTO",
+                        "strike_mode": "ATM",
+                        "strike_offset": 0,
+                        "legs": [],
+                        "stop_mode": "PERCENT",
+                        "stop_value": 50.0,
+                        "target_mode": "PERCENT",
+                        "target_value": 50.0,
+                        "max_trades_per_day": 1,
+                        "entry_conditions": [],
+                        "exit_conditions": []
+                      },
+                      "version": 1,
+                      "versions": [],
+                      "created_at": "2026-09-14T13:51:50.423858Z",
+                      "updated_at": "2026-09-14T13:51:50.423858Z"
+                    }
+                  }
+                ],
+                "created_at": "2026-09-14T13:51:50.423858Z",
+                "updated_at": "2026-09-14T14:06:56.931930Z"
+              }
+            },
+            {
+              "version": 3,
+              "saved_at": "2026-09-14T14:06:59.973550Z",
+              "snapshot": {
+                "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                "name": "MY NIFTY Iron Condor - Weekly",
+                "description": "",
+                "source": "USER",
+                "status": "DRAFT",
+                "instruments": [
+                  "NIFTY"
+                ],
+                "timeframe": "5m",
+                "engine_strategy": null,
+                "rules": {
+                  "condition_logic": "ALL",
+                  "direction": "AUTO",
+                  "option_action": "AUTO",
+                  "expiry_mode": "AUTO",
+                  "strike_mode": "ATM",
+                  "strike_offset": 0,
+                  "legs": [
+                    {
+                      "action": "SELL",
+                      "option_type": "CE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_PLUS",
+                      "strike": null,
+                      "strike_offset": 4,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "BUY",
+                      "option_type": "CE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_PLUS",
+                      "strike": null,
+                      "strike_offset": 8,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "SELL",
+                      "option_type": "PE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_MINUS",
+                      "strike": null,
+                      "strike_offset": 4,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "BUY",
+                      "option_type": "PE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_MINUS",
+                      "strike": null,
+                      "strike_offset": 8,
+                      "lots": 1,
+                      "price": null
+                    }
+                  ],
+                  "stop_mode": "PERCENT",
+                  "stop_value": 50.0,
+                  "target_mode": "PERCENT",
+                  "target_value": 50.0,
+                  "max_trades_per_day": 1,
+                  "entry_conditions": [],
+                  "exit_conditions": []
+                },
+                "version": 3,
+                "versions": [
+                  {
+                    "version": 1,
+                    "saved_at": "2026-09-14T14:06:56.931930Z",
+                    "snapshot": {
+                      "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                      "name": "MY NIFTY Iron Condor - Weekly",
+                      "description": "",
+                      "source": "USER",
+                      "status": "DRAFT",
+                      "instruments": [
+                        "NIFTY"
+                      ],
+                      "timeframe": "5m",
+                      "engine_strategy": null,
+                      "rules": {
+                        "condition_logic": "ALL",
+                        "direction": "AUTO",
+                        "option_action": "AUTO",
+                        "expiry_mode": "AUTO",
+                        "strike_mode": "ATM",
+                        "strike_offset": 0,
+                        "legs": [],
+                        "stop_mode": "PERCENT",
+                        "stop_value": 50.0,
+                        "target_mode": "PERCENT",
+                        "target_value": 50.0,
+                        "max_trades_per_day": 1,
+                        "entry_conditions": [],
+                        "exit_conditions": []
+                      },
+                      "version": 1,
+                      "versions": [],
+                      "created_at": "2026-09-14T13:51:50.423858Z",
+                      "updated_at": "2026-09-14T13:51:50.423858Z"
+                    }
+                  },
+                  {
+                    "version": 2,
+                    "saved_at": "2026-09-14T14:06:59.086369Z",
+                    "snapshot": {
+                      "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                      "name": "MY NIFTY Iron Condor - Weekly",
+                      "description": "",
+                      "source": "USER",
+                      "status": "DRAFT",
+                      "instruments": [
+                        "NIFTY"
+                      ],
+                      "timeframe": "5m",
+                      "engine_strategy": null,
+                      "rules": {
+                        "condition_logic": "ALL",
+                        "direction": "AUTO",
+                        "option_action": "AUTO",
+                        "expiry_mode": "AUTO",
+                        "strike_mode": "ATM",
+                        "strike_offset": 0,
+                        "legs": [
+                          {
+                            "action": "SELL",
+                            "option_type": "CE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_PLUS",
+                            "strike": null,
+                            "strike_offset": 4,
+                            "lots": 1,
+                            "price": null
+                          },
+                          {
+                            "action": "BUY",
+                            "option_type": "CE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_PLUS",
+                            "strike": null,
+                            "strike_offset": 8,
+                            "lots": 1,
+                            "price": null
+                          },
+                          {
+                            "action": "SELL",
+                            "option_type": "PE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_MINUS",
+                            "strike": null,
+                            "strike_offset": 4,
+                            "lots": 1,
+                            "price": null
+                          },
+                          {
+                            "action": "BUY",
+                            "option_type": "PE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_MINUS",
+                            "strike": null,
+                            "strike_offset": 8,
+                            "lots": 1,
+                            "price": null
+                          }
+                        ],
+                        "stop_mode": "PERCENT",
+                        "stop_value": 50.0,
+                        "target_mode": "PERCENT",
+                        "target_value": 50.0,
+                        "max_trades_per_day": 1,
+                        "entry_conditions": [],
+                        "exit_conditions": []
+                      },
+                      "version": 2,
+                      "versions": [
+                        {
+                          "version": 1,
+                          "saved_at": "2026-09-14T14:06:56.931930Z",
+                          "snapshot": {
+                            "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                            "name": "MY NIFTY Iron Condor - Weekly",
+                            "description": "",
+                            "source": "USER",
+                            "status": "DRAFT",
+                            "instruments": [
+                              "NIFTY"
+                            ],
+                            "timeframe": "5m",
+                            "engine_strategy": null,
+                            "rules": {
+                              "condition_logic": "ALL",
+                              "direction": "AUTO",
+                              "option_action": "AUTO",
+                              "expiry_mode": "AUTO",
+                              "strike_mode": "ATM",
+                              "strike_offset": 0,
+                              "legs": [],
+                              "stop_mode": "PERCENT",
+                              "stop_value": 50.0,
+                              "target_mode": "PERCENT",
+                              "target_value": 50.0,
+                              "max_trades_per_day": 1,
+                              "entry_conditions": [],
+                              "exit_conditions": []
+                            },
+                            "version": 1,
+                            "versions": [],
+                            "created_at": "2026-09-14T13:51:50.423858Z",
+                            "updated_at": "2026-09-14T13:51:50.423858Z"
+                          }
+                        }
+                      ],
+                      "created_at": "2026-09-14T13:51:50.423858Z",
+                      "updated_at": "2026-09-14T14:06:56.931930Z"
+                    }
+                  }
+                ],
+                "created_at": "2026-09-14T13:51:50.423858Z",
+                "updated_at": "2026-09-14T14:06:59.086369Z"
+              }
+            }
+          ],
+          "created_at": "2026-09-14T13:51:50.423858Z",
+          "updated_at": "2026-09-14T14:06:59.973550Z"
+        }
+      },
+      {
+        "version": 5,
+        "saved_at": "2026-09-14T14:18:51.968989Z",
+        "snapshot": {
+          "id": "8163f4770cef41dfb58803ff9f58b6d4",
+          "name": "MY NIFTY Iron Condor - Weekly",
+          "description": "",
+          "source": "USER",
+          "status": "DRAFT",
+          "instruments": [
+            "NIFTY"
+          ],
+          "timeframe": "5m",
+          "engine_strategy": "OPTION_DIRECTIONAL",
+          "rules": {
+            "condition_logic": "ALL",
+            "direction": "AUTO",
+            "option_action": "AUTO",
+            "expiry_mode": "AUTO",
+            "strike_mode": "ATM",
+            "strike_offset": 0,
+            "legs": [
+              {
+                "action": "SELL",
+                "option_type": "CE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_PLUS",
+                "strike": null,
+                "strike_offset": 4,
+                "lots": 1,
+                "price": null
+              },
+              {
+                "action": "BUY",
+                "option_type": "CE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_PLUS",
+                "strike": null,
+                "strike_offset": 8,
+                "lots": 1,
+                "price": null
+              },
+              {
+                "action": "SELL",
+                "option_type": "PE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_PLUS",
+                "strike": null,
+                "strike_offset": 4,
+                "lots": 1,
+                "price": null
+              },
+              {
+                "action": "BUY",
+                "option_type": "PE",
+                "expiry_mode": "NEAREST",
+                "expiry": null,
+                "strike_mode": "ATM_PLUS",
+                "strike": null,
+                "strike_offset": 8,
+                "lots": 1,
+                "price": null
+              }
+            ],
+            "stop_mode": "PERCENT",
+            "stop_value": 50.0,
+            "target_mode": "PERCENT",
+            "target_value": 50.0,
+            "max_trades_per_day": 1,
+            "entry_conditions": [],
+            "exit_conditions": []
+          },
+          "version": 5,
+          "versions": [
+            {
+              "version": 1,
+              "saved_at": "2026-09-14T14:06:56.931930Z",
+              "snapshot": {
+                "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                "name": "MY NIFTY Iron Condor - Weekly",
+                "description": "",
+                "source": "USER",
+                "status": "DRAFT",
+                "instruments": [
+                  "NIFTY"
+                ],
+                "timeframe": "5m",
+                "engine_strategy": null,
+                "rules": {
+                  "condition_logic": "ALL",
+                  "direction": "AUTO",
+                  "option_action": "AUTO",
+                  "expiry_mode": "AUTO",
+                  "strike_mode": "ATM",
+                  "strike_offset": 0,
+                  "legs": [],
+                  "stop_mode": "PERCENT",
+                  "stop_value": 50.0,
+                  "target_mode": "PERCENT",
+                  "target_value": 50.0,
+                  "max_trades_per_day": 1,
+                  "entry_conditions": [],
+                  "exit_conditions": []
+                },
+                "version": 1,
+                "versions": [],
+                "created_at": "2026-09-14T13:51:50.423858Z",
+                "updated_at": "2026-09-14T13:51:50.423858Z"
+              }
+            },
+            {
+              "version": 2,
+              "saved_at": "2026-09-14T14:06:59.086369Z",
+              "snapshot": {
+                "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                "name": "MY NIFTY Iron Condor - Weekly",
+                "description": "",
+                "source": "USER",
+                "status": "DRAFT",
+                "instruments": [
+                  "NIFTY"
+                ],
+                "timeframe": "5m",
+                "engine_strategy": null,
+                "rules": {
+                  "condition_logic": "ALL",
+                  "direction": "AUTO",
+                  "option_action": "AUTO",
+                  "expiry_mode": "AUTO",
+                  "strike_mode": "ATM",
+                  "strike_offset": 0,
+                  "legs": [
+                    {
+                      "action": "SELL",
+                      "option_type": "CE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_PLUS",
+                      "strike": null,
+                      "strike_offset": 4,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "BUY",
+                      "option_type": "CE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_PLUS",
+                      "strike": null,
+                      "strike_offset": 8,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "SELL",
+                      "option_type": "PE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_MINUS",
+                      "strike": null,
+                      "strike_offset": 4,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "BUY",
+                      "option_type": "PE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_MINUS",
+                      "strike": null,
+                      "strike_offset": 8,
+                      "lots": 1,
+                      "price": null
+                    }
+                  ],
+                  "stop_mode": "PERCENT",
+                  "stop_value": 50.0,
+                  "target_mode": "PERCENT",
+                  "target_value": 50.0,
+                  "max_trades_per_day": 1,
+                  "entry_conditions": [],
+                  "exit_conditions": []
+                },
+                "version": 2,
+                "versions": [
+                  {
+                    "version": 1,
+                    "saved_at": "2026-09-14T14:06:56.931930Z",
+                    "snapshot": {
+                      "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                      "name": "MY NIFTY Iron Condor - Weekly",
+                      "description": "",
+                      "source": "USER",
+                      "status": "DRAFT",
+                      "instruments": [
+                        "NIFTY"
+                      ],
+                      "timeframe": "5m",
+                      "engine_strategy": null,
+                      "rules": {
+                        "condition_logic": "ALL",
+                        "direction": "AUTO",
+                        "option_action": "AUTO",
+                        "expiry_mode": "AUTO",
+                        "strike_mode": "ATM",
+                        "strike_offset": 0,
+                        "legs": [],
+                        "stop_mode": "PERCENT",
+                        "stop_value": 50.0,
+                        "target_mode": "PERCENT",
+                        "target_value": 50.0,
+                        "max_trades_per_day": 1,
+                        "entry_conditions": [],
+                        "exit_conditions": []
+                      },
+                      "version": 1,
+                      "versions": [],
+                      "created_at": "2026-09-14T13:51:50.423858Z",
+                      "updated_at": "2026-09-14T13:51:50.423858Z"
+                    }
+                  }
+                ],
+                "created_at": "2026-09-14T13:51:50.423858Z",
+                "updated_at": "2026-09-14T14:06:56.931930Z"
+              }
+            },
+            {
+              "version": 3,
+              "saved_at": "2026-09-14T14:06:59.973550Z",
+              "snapshot": {
+                "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                "name": "MY NIFTY Iron Condor - Weekly",
+                "description": "",
+                "source": "USER",
+                "status": "DRAFT",
+                "instruments": [
+                  "NIFTY"
+                ],
+                "timeframe": "5m",
+                "engine_strategy": null,
+                "rules": {
+                  "condition_logic": "ALL",
+                  "direction": "AUTO",
+                  "option_action": "AUTO",
+                  "expiry_mode": "AUTO",
+                  "strike_mode": "ATM",
+                  "strike_offset": 0,
+                  "legs": [
+                    {
+                      "action": "SELL",
+                      "option_type": "CE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_PLUS",
+                      "strike": null,
+                      "strike_offset": 4,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "BUY",
+                      "option_type": "CE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_PLUS",
+                      "strike": null,
+                      "strike_offset": 8,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "SELL",
+                      "option_type": "PE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_MINUS",
+                      "strike": null,
+                      "strike_offset": 4,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "BUY",
+                      "option_type": "PE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_MINUS",
+                      "strike": null,
+                      "strike_offset": 8,
+                      "lots": 1,
+                      "price": null
+                    }
+                  ],
+                  "stop_mode": "PERCENT",
+                  "stop_value": 50.0,
+                  "target_mode": "PERCENT",
+                  "target_value": 50.0,
+                  "max_trades_per_day": 1,
+                  "entry_conditions": [],
+                  "exit_conditions": []
+                },
+                "version": 3,
+                "versions": [
+                  {
+                    "version": 1,
+                    "saved_at": "2026-09-14T14:06:56.931930Z",
+                    "snapshot": {
+                      "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                      "name": "MY NIFTY Iron Condor - Weekly",
+                      "description": "",
+                      "source": "USER",
+                      "status": "DRAFT",
+                      "instruments": [
+                        "NIFTY"
+                      ],
+                      "timeframe": "5m",
+                      "engine_strategy": null,
+                      "rules": {
+                        "condition_logic": "ALL",
+                        "direction": "AUTO",
+                        "option_action": "AUTO",
+                        "expiry_mode": "AUTO",
+                        "strike_mode": "ATM",
+                        "strike_offset": 0,
+                        "legs": [],
+                        "stop_mode": "PERCENT",
+                        "stop_value": 50.0,
+                        "target_mode": "PERCENT",
+                        "target_value": 50.0,
+                        "max_trades_per_day": 1,
+                        "entry_conditions": [],
+                        "exit_conditions": []
+                      },
+                      "version": 1,
+                      "versions": [],
+                      "created_at": "2026-09-14T13:51:50.423858Z",
+                      "updated_at": "2026-09-14T13:51:50.423858Z"
+                    }
+                  },
+                  {
+                    "version": 2,
+                    "saved_at": "2026-09-14T14:06:59.086369Z",
+                    "snapshot": {
+                      "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                      "name": "MY NIFTY Iron Condor - Weekly",
+                      "description": "",
+                      "source": "USER",
+                      "status": "DRAFT",
+                      "instruments": [
+                        "NIFTY"
+                      ],
+                      "timeframe": "5m",
+                      "engine_strategy": null,
+                      "rules": {
+                        "condition_logic": "ALL",
+                        "direction": "AUTO",
+                        "option_action": "AUTO",
+                        "expiry_mode": "AUTO",
+                        "strike_mode": "ATM",
+                        "strike_offset": 0,
+                        "legs": [
+                          {
+                            "action": "SELL",
+                            "option_type": "CE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_PLUS",
+                            "strike": null,
+                            "strike_offset": 4,
+                            "lots": 1,
+                            "price": null
+                          },
+                          {
+                            "action": "BUY",
+                            "option_type": "CE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_PLUS",
+                            "strike": null,
+                            "strike_offset": 8,
+                            "lots": 1,
+                            "price": null
+                          },
+                          {
+                            "action": "SELL",
+                            "option_type": "PE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_MINUS",
+                            "strike": null,
+                            "strike_offset": 4,
+                            "lots": 1,
+                            "price": null
+                          },
+                          {
+                            "action": "BUY",
+                            "option_type": "PE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_MINUS",
+                            "strike": null,
+                            "strike_offset": 8,
+                            "lots": 1,
+                            "price": null
+                          }
+                        ],
+                        "stop_mode": "PERCENT",
+                        "stop_value": 50.0,
+                        "target_mode": "PERCENT",
+                        "target_value": 50.0,
+                        "max_trades_per_day": 1,
+                        "entry_conditions": [],
+                        "exit_conditions": []
+                      },
+                      "version": 2,
+                      "versions": [
+                        {
+                          "version": 1,
+                          "saved_at": "2026-09-14T14:06:56.931930Z",
+                          "snapshot": {
+                            "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                            "name": "MY NIFTY Iron Condor - Weekly",
+                            "description": "",
+                            "source": "USER",
+                            "status": "DRAFT",
+                            "instruments": [
+                              "NIFTY"
+                            ],
+                            "timeframe": "5m",
+                            "engine_strategy": null,
+                            "rules": {
+                              "condition_logic": "ALL",
+                              "direction": "AUTO",
+                              "option_action": "AUTO",
+                              "expiry_mode": "AUTO",
+                              "strike_mode": "ATM",
+                              "strike_offset": 0,
+                              "legs": [],
+                              "stop_mode": "PERCENT",
+                              "stop_value": 50.0,
+                              "target_mode": "PERCENT",
+                              "target_value": 50.0,
+                              "max_trades_per_day": 1,
+                              "entry_conditions": [],
+                              "exit_conditions": []
+                            },
+                            "version": 1,
+                            "versions": [],
+                            "created_at": "2026-09-14T13:51:50.423858Z",
+                            "updated_at": "2026-09-14T13:51:50.423858Z"
+                          }
+                        }
+                      ],
+                      "created_at": "2026-09-14T13:51:50.423858Z",
+                      "updated_at": "2026-09-14T14:06:56.931930Z"
+                    }
+                  }
+                ],
+                "created_at": "2026-09-14T13:51:50.423858Z",
+                "updated_at": "2026-09-14T14:06:59.086369Z"
+              }
+            },
+            {
+              "version": 4,
+              "saved_at": "2026-09-14T14:18:50.628092Z",
+              "snapshot": {
+                "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                "name": "MY NIFTY Iron Condor - Weekly",
+                "description": "",
+                "source": "USER",
+                "status": "DRAFT",
+                "instruments": [
+                  "NIFTY"
+                ],
+                "timeframe": "5m",
+                "engine_strategy": null,
+                "rules": {
+                  "condition_logic": "ALL",
+                  "direction": "AUTO",
+                  "option_action": "AUTO",
+                  "expiry_mode": "AUTO",
+                  "strike_mode": "ATM",
+                  "strike_offset": 0,
+                  "legs": [
+                    {
+                      "action": "SELL",
+                      "option_type": "CE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_PLUS",
+                      "strike": null,
+                      "strike_offset": 4,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "BUY",
+                      "option_type": "CE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_PLUS",
+                      "strike": null,
+                      "strike_offset": 8,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "SELL",
+                      "option_type": "PE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_MINUS",
+                      "strike": null,
+                      "strike_offset": 4,
+                      "lots": 1,
+                      "price": null
+                    },
+                    {
+                      "action": "BUY",
+                      "option_type": "PE",
+                      "expiry_mode": "NEAREST",
+                      "expiry": null,
+                      "strike_mode": "ATM_MINUS",
+                      "strike": null,
+                      "strike_offset": 8,
+                      "lots": 1,
+                      "price": null
+                    }
+                  ],
+                  "stop_mode": "PERCENT",
+                  "stop_value": 50.0,
+                  "target_mode": "PERCENT",
+                  "target_value": 50.0,
+                  "max_trades_per_day": 1,
+                  "entry_conditions": [],
+                  "exit_conditions": []
+                },
+                "version": 4,
+                "versions": [
+                  {
+                    "version": 1,
+                    "saved_at": "2026-09-14T14:06:56.931930Z",
+                    "snapshot": {
+                      "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                      "name": "MY NIFTY Iron Condor - Weekly",
+                      "description": "",
+                      "source": "USER",
+                      "status": "DRAFT",
+                      "instruments": [
+                        "NIFTY"
+                      ],
+                      "timeframe": "5m",
+                      "engine_strategy": null,
+                      "rules": {
+                        "condition_logic": "ALL",
+                        "direction": "AUTO",
+                        "option_action": "AUTO",
+                        "expiry_mode": "AUTO",
+                        "strike_mode": "ATM",
+                        "strike_offset": 0,
+                        "legs": [],
+                        "stop_mode": "PERCENT",
+                        "stop_value": 50.0,
+                        "target_mode": "PERCENT",
+                        "target_value": 50.0,
+                        "max_trades_per_day": 1,
+                        "entry_conditions": [],
+                        "exit_conditions": []
+                      },
+                      "version": 1,
+                      "versions": [],
+                      "created_at": "2026-09-14T13:51:50.423858Z",
+                      "updated_at": "2026-09-14T13:51:50.423858Z"
+                    }
+                  },
+                  {
+                    "version": 2,
+                    "saved_at": "2026-09-14T14:06:59.086369Z",
+                    "snapshot": {
+                      "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                      "name": "MY NIFTY Iron Condor - Weekly",
+                      "description": "",
+                      "source": "USER",
+                      "status": "DRAFT",
+                      "instruments": [
+                        "NIFTY"
+                      ],
+                      "timeframe": "5m",
+                      "engine_strategy": null,
+                      "rules": {
+                        "condition_logic": "ALL",
+                        "direction": "AUTO",
+                        "option_action": "AUTO",
+                        "expiry_mode": "AUTO",
+                        "strike_mode": "ATM",
+                        "strike_offset": 0,
+                        "legs": [
+                          {
+                            "action": "SELL",
+                            "option_type": "CE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_PLUS",
+                            "strike": null,
+                            "strike_offset": 4,
+                            "lots": 1,
+                            "price": null
+                          },
+                          {
+                            "action": "BUY",
+                            "option_type": "CE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_PLUS",
+                            "strike": null,
+                            "strike_offset": 8,
+                            "lots": 1,
+                            "price": null
+                          },
+                          {
+                            "action": "SELL",
+                            "option_type": "PE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_MINUS",
+                            "strike": null,
+                            "strike_offset": 4,
+                            "lots": 1,
+                            "price": null
+                          },
+                          {
+                            "action": "BUY",
+                            "option_type": "PE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_MINUS",
+                            "strike": null,
+                            "strike_offset": 8,
+                            "lots": 1,
+                            "price": null
+                          }
+                        ],
+                        "stop_mode": "PERCENT",
+                        "stop_value": 50.0,
+                        "target_mode": "PERCENT",
+                        "target_value": 50.0,
+                        "max_trades_per_day": 1,
+                        "entry_conditions": [],
+                        "exit_conditions": []
+                      },
+                      "version": 2,
+                      "versions": [
+                        {
+                          "version": 1,
+                          "saved_at": "2026-09-14T14:06:56.931930Z",
+                          "snapshot": {
+                            "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                            "name": "MY NIFTY Iron Condor - Weekly",
+                            "description": "",
+                            "source": "USER",
+                            "status": "DRAFT",
+                            "instruments": [
+                              "NIFTY"
+                            ],
+                            "timeframe": "5m",
+                            "engine_strategy": null,
+                            "rules": {
+                              "condition_logic": "ALL",
+                              "direction": "AUTO",
+                              "option_action": "AUTO",
+                              "expiry_mode": "AUTO",
+                              "strike_mode": "ATM",
+                              "strike_offset": 0,
+                              "legs": [],
+                              "stop_mode": "PERCENT",
+                              "stop_value": 50.0,
+                              "target_mode": "PERCENT",
+                              "target_value": 50.0,
+                              "max_trades_per_day": 1,
+                              "entry_conditions": [],
+                              "exit_conditions": []
+                            },
+                            "version": 1,
+                            "versions": [],
+                            "created_at": "2026-09-14T13:51:50.423858Z",
+                            "updated_at": "2026-09-14T13:51:50.423858Z"
+                          }
+                        }
+                      ],
+                      "created_at": "2026-09-14T13:51:50.423858Z",
+                      "updated_at": "2026-09-14T14:06:56.931930Z"
+                    }
+                  },
+                  {
+                    "version": 3,
+                    "saved_at": "2026-09-14T14:06:59.973550Z",
+                    "snapshot": {
+                      "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                      "name": "MY NIFTY Iron Condor - Weekly",
+                      "description": "",
+                      "source": "USER",
+                      "status": "DRAFT",
+                      "instruments": [
+                        "NIFTY"
+                      ],
+                      "timeframe": "5m",
+                      "engine_strategy": null,
+                      "rules": {
+                        "condition_logic": "ALL",
+                        "direction": "AUTO",
+                        "option_action": "AUTO",
+                        "expiry_mode": "AUTO",
+                        "strike_mode": "ATM",
+                        "strike_offset": 0,
+                        "legs": [
+                          {
+                            "action": "SELL",
+                            "option_type": "CE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_PLUS",
+                            "strike": null,
+                            "strike_offset": 4,
+                            "lots": 1,
+                            "price": null
+                          },
+                          {
+                            "action": "BUY",
+                            "option_type": "CE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_PLUS",
+                            "strike": null,
+                            "strike_offset": 8,
+                            "lots": 1,
+                            "price": null
+                          },
+                          {
+                            "action": "SELL",
+                            "option_type": "PE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_MINUS",
+                            "strike": null,
+                            "strike_offset": 4,
+                            "lots": 1,
+                            "price": null
+                          },
+                          {
+                            "action": "BUY",
+                            "option_type": "PE",
+                            "expiry_mode": "NEAREST",
+                            "expiry": null,
+                            "strike_mode": "ATM_MINUS",
+                            "strike": null,
+                            "strike_offset": 8,
+                            "lots": 1,
+                            "price": null
+                          }
+                        ],
+                        "stop_mode": "PERCENT",
+                        "stop_value": 50.0,
+                        "target_mode": "PERCENT",
+                        "target_value": 50.0,
+                        "max_trades_per_day": 1,
+                        "entry_conditions": [],
+                        "exit_conditions": []
+                      },
+                      "version": 3,
+                      "versions": [
+                        {
+                          "version": 1,
+                          "saved_at": "2026-09-14T14:06:56.931930Z",
+                          "snapshot": {
+                            "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                            "name": "MY NIFTY Iron Condor - Weekly",
+                            "description": "",
+                            "source": "USER",
+                            "status": "DRAFT",
+                            "instruments": [
+                              "NIFTY"
+                            ],
+                            "timeframe": "5m",
+                            "engine_strategy": null,
+                            "rules": {
+                              "condition_logic": "ALL",
+                              "direction": "AUTO",
+                              "option_action": "AUTO",
+                              "expiry_mode": "AUTO",
+                              "strike_mode": "ATM",
+                              "strike_offset": 0,
+                              "legs": [],
+                              "stop_mode": "PERCENT",
+                              "stop_value": 50.0,
+                              "target_mode": "PERCENT",
+                              "target_value": 50.0,
+                              "max_trades_per_day": 1,
+                              "entry_conditions": [],
+                              "exit_conditions": []
+                            },
+                            "version": 1,
+                            "versions": [],
+                            "created_at": "2026-09-14T13:51:50.423858Z",
+                            "updated_at": "2026-09-14T13:51:50.423858Z"
+                          }
+                        },
+                        {
+                          "version": 2,
+                          "saved_at": "2026-09-14T14:06:59.086369Z",
+                          "snapshot": {
+                            "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                            "name": "MY NIFTY Iron Condor - Weekly",
+                            "description": "",
+                            "source": "USER",
+                            "status": "DRAFT",
+                            "instruments": [
+                              "NIFTY"
+                            ],
+                            "timeframe": "5m",
+                            "engine_strategy": null,
+                            "rules": {
+                              "condition_logic": "ALL",
+                              "direction": "AUTO",
+                              "option_action": "AUTO",
+                              "expiry_mode": "AUTO",
+                              "strike_mode": "ATM",
+                              "strike_offset": 0,
+                              "legs": [
+                                {
+                                  "action": "SELL",
+                                  "option_type": "CE",
+                                  "expiry_mode": "NEAREST",
+                                  "expiry": null,
+                                  "strike_mode": "ATM_PLUS",
+                                  "strike": null,
+                                  "strike_offset": 4,
+                                  "lots": 1,
+                                  "price": null
+                                },
+                                {
+                                  "action": "BUY",
+                                  "option_type": "CE",
+                                  "expiry_mode": "NEAREST",
+                                  "expiry": null,
+                                  "strike_mode": "ATM_PLUS",
+                                  "strike": null,
+                                  "strike_offset": 8,
+                                  "lots": 1,
+                                  "price": null
+                                },
+                                {
+                                  "action": "SELL",
+                                  "option_type": "PE",
+                                  "expiry_mode": "NEAREST",
+                                  "expiry": null,
+                                  "strike_mode": "ATM_MINUS",
+                                  "strike": null,
+                                  "strike_offset": 4,
+                                  "lots": 1,
+                                  "price": null
+                                },
+                                {
+                                  "action": "BUY",
+                                  "option_type": "PE",
+                                  "expiry_mode": "NEAREST",
+                                  "expiry": null,
+                                  "strike_mode": "ATM_MINUS",
+                                  "strike": null,
+                                  "strike_offset": 8,
+                                  "lots": 1,
+                                  "price": null
+                                }
+                              ],
+                              "stop_mode": "PERCENT",
+                              "stop_value": 50.0,
+                              "target_mode": "PERCENT",
+                              "target_value": 50.0,
+                              "max_trades_per_day": 1,
+                              "entry_conditions": [],
+                              "exit_conditions": []
+                            },
+                            "version": 2,
+                            "versions": [
+                              {
+                                "version": 1,
+                                "saved_at": "2026-09-14T14:06:56.931930Z",
+                                "snapshot": {
+                                  "id": "8163f4770cef41dfb58803ff9f58b6d4",
+                                  "name": "MY NIFTY Iron Condor - Weekly",
+                                  "description": "",
+                                  "source": "USER",
+                                  "status": "DRAFT",
+                                  "instruments": [
+                                    "NIFTY"
+                                  ],
+                                  "timeframe": "5m",
+                                  "engine_strategy": null,
+                                  "rules": {
+                                    "condition_logic": "ALL",
+                                    "direction": "AUTO",
+                                    "option_action": "AUTO",
+                                    "expiry_mode": "AUTO",
+                                    "strike_mode": "ATM",
+                                    "strike_offset": 0,
+                                    "legs": [],
+                                    "stop_mode": "PERCENT",
+                                    "stop_value": 50.0,
+                                    "target_mode": "PERCENT",
+                                    "target_value": 50.0,
+                                    "max_trades_per_day": 1,
+                                    "entry_conditions": [],
+                                    "exit_conditions": []
+                                  },
+                                  "version": 1,
+                                  "versions": [],
+                                  "created_at": "2026-09-14T13:51:50.423858Z",
+                                  "updated_at": "2026-09-14T13:51:50.423858Z"
+                                }
+                              }
+                            ],
+                            "created_at": "2026-09-14T13:51:50.423858Z",
+                            "updated_at": "2026-09-14T14:06:56.931930Z"
+                          }
+                        }
+                      ],
+                      "created_at": "2026-09-14T13:51:50.423858Z",
+                      "updated_at": "2026-09-14T14:06:59.086369Z"
+                    }
+                  }
+                ],
+                "created_at": "2026-09-14T13:51:50.423858Z",
+                "updated_at": "2026-09-14T14:06:59.973550Z"
+              }
+            }
+          ],
+          "created_at": "2026-09-14T13:51:50.423858Z",
+          "updated_at": "2026-09-14T14:18:50.628092Z"
+        }
+      }
+    ],
+    "created_at": "2026-09-14T13:51:50.423858Z",
+    "updated_at": "2026-09-14T14:18:51.968989Z"
+  }
+]

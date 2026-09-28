@@ -1,0 +1,77 @@
+--- /mnt/data/files/robustness.py	2026-09-28 05:32:18.275650407 +0000
++++ /mnt/data/trading_platform_multileg_patch/robustness.py	2026-09-28 05:34:23.212336093 +0000
+@@ -25,7 +25,7 @@
+     index = 0
+     while True:
+         train_start = 0 if expanding else cursor
+-        train_end = train_start + train_size
++        train_end = (train_size + cursor) if expanding else (train_start + train_size)
+         val_start = train_end
+         val_end = val_start + validation_size
+         oos_start = val_end
+@@ -126,12 +126,16 @@
+     monte_carlo_seed: int = 42,
+     slippage_multipliers: list[float] | None = None,
+     brokerage_multipliers: list[float] | None = None,
++    legs: list[dict[str, Any]] | None = None,
++    loader: Any | None = None,
++    base_result: dict[str, Any] | None = None,
+ ) -> dict[str, Any]:
+     rows = normalize_rows(underlying_rows)
+     if len(rows) < train_size + validation_size + oos_size:
+         raise ValueError("ROBUSTNESS_HISTORY_TOO_SHORT")
+ 
+     base_cfg = config or OptionsBacktestConfig()
++    provided_base_result = base_result is not None
+     slip_mults = slippage_multipliers or [0.5, 1.0, 1.5]
+     broker_mults = brokerage_multipliers or [0.5, 1.0, 1.5]
+ 
+@@ -165,6 +169,8 @@
+                 stop_pct=stop_pct,
+                 target_rr=target_rr,
+                 config=cfg,
++                loader=loader,
++                legs=legs,
+             )
+         except Exception as exc:
+             return {
+@@ -172,11 +178,11 @@
+                 "trades": [],
+             }
+ 
+-    base_result = run_scenario(base_cfg)
++    base_result = base_result or run_scenario(base_cfg)
+     if base_result.get("error"):
+         failures.append({"scope": "BASE", "reason": base_result["error"]})
+ 
+-    base_trades = list(base_result.get("trades") or [])
++    base_trades = list(base_result.get("strategy_trade_groups") or base_result.get("trades") or [])
+     oos_pnls = oos_pnls_from_trades(base_trades)
+ 
+     mc = monte_carlo_trade_bootstrap(
+@@ -190,12 +196,15 @@
+     for sm in slip_mults:
+         for bm in broker_mults:
+             cfg = _updated_config(base_cfg, slippage_multiplier=float(sm), brokerage_multiplier=float(bm))
+-            result = run_scenario(cfg)
++            if float(sm) == 1.0 and float(bm) == 1.0 and provided_base_result:
++                result = base_result
++            else:
++                result = run_scenario(cfg)
+             if result.get("error"):
+                 scenario_pnls: list[float] = []
+                 scenario_failures = [{"scope": "FULL_RUN", "reason": result["error"]}]
+             else:
+-                scenario_pnls = oos_pnls_from_trades(list(result.get("trades") or []))
++                scenario_pnls = oos_pnls_from_trades(list(result.get("strategy_trade_groups") or result.get("trades") or []))
+                 scenario_failures = []
+ 
+             stats = _pnl_stats(scenario_pnls) if scenario_pnls else {"net_pnl": None, "max_drawdown": None}
+@@ -216,6 +225,7 @@
+ 
+     return {
+         "strategy": strategy_name,
++        "strategy_legs": len(legs or []),
+         "data_source": "Upstox",
+         "used_actual_option_prices": True,
+         "synthetic_prices": False,

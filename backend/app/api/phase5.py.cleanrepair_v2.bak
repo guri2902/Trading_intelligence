@@ -1,0 +1,200 @@
+from __future__ import annotations
+
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from ..db.models import Instrument
+from ..db.session import get_db
+from ..data_service import DataService
+from ..instruments.universe import get_core_option_instruments
+from ..storage.ingestion import ingest_option_chain as persist_option_chain, ingest_provider_candles
+from ..storage.query import latest_candles, latest_option_snapshot
+
+router = APIRouter(prefix="/phase5", tags=["phase5"])
+data_service = DataService()
+
+
+@router.post("/ingest/candles")
+def ingest_candles(
+    provider: str = Query("upstox"),
+    instrument_key: str = Query(...),
+    canonical_key: str = Query(...),
+    unit: str = Query("minutes"),
+    interval: int = Query(1, ge=1),
+    from_date: date = Query(...),
+    to_date: date = Query(...),
+    db: Session = Depends(get_db),
+):
+    instrument = db.scalar(
+        select(Instrument).where(
+            Instrument.instrument_key == canonical_key
+        )
+    )
+    if instrument is None:
+        index_map = {
+            "NSE_INDEX|Nifty 50": "NIFTY",
+            "NSE_INDEX|Nifty Bank": "BANKNIFTY",
+        }
+
+        trading_symbol = index_map.get(canonical_key)
+
+        if trading_symbol:
+            instrument = db.scalar(
+                select(Instrument).where(
+                    Instrument.segment == "NSE_INDEX",
+                    Instrument.trading_symbol == trading_symbol,
+                )
+            )
+
+    if instrument is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Canonical instrument not found: {canonical_key}",
+        )
+    
+    provider_obj = data_service.providers.get(provider)
+    if provider_obj is None or not hasattr(provider_obj, "candles"):
+        raise HTTPException(status_code=404, detail="Provider not available")
+
+    candles = provider_obj.candles(
+        instrument_key,
+        unit,
+        interval,
+        from_date,
+        to_date,
+    )
+
+    return ingest_provider_candles(
+        db,
+        instrument=instrument,
+        timeframe=f"{unit}:{interval}",
+        candles=candles,
+        expected_interval_minutes=interval if unit == "minutes" else None,
+        source=provider,
+    )
+
+
+@router.post("/ingest/option-chain")
+def ingest_option_chain(
+    provider: str = Query("upstox"),
+    underlying_key: str = Query(...),
+    expiry_date: date | None = Query(default=None),
+    underlying_symbol: str = Query("NIFTY"),
+    db: Session = Depends(get_db),
+):
+    provider_obj = data_service.providers.get(provider)
+    if provider_obj is None or not hasattr(provider_obj, "option_chain"):
+        raise HTTPException(status_code=404, detail="Provider not available")
+
+    snapshot = provider_obj.option_chain(
+        underlying_key,
+        expiry_date,
+    )
+
+    instruments = get_core_option_instruments(
+        db,
+        underlying_symbol,
+    )
+
+    lookup = {
+        (
+            instrument.expiry_date,
+            float(instrument.strike),
+            instrument.option_type,
+        ): instrument
+        for instrument in instruments
+        if instrument.expiry_date is not None
+        and instrument.strike is not None
+        and instrument.option_type is not None
+    }
+
+    return persist_option_chain(
+        db,
+        snapshot=snapshot,
+        instrument_lookup=lookup,
+        source=provider,
+    )
+
+
+@router.get("/candles/latest")
+def get_latest_candles(
+    canonical_key: str = Query(...),
+    timeframe: str = Query(...),
+    from_date: str | None = Query(None),
+    to_date: str | None = Query(None),
+    limit: int = Query(100, ge=1, le=5000),
+    db: Session = Depends(get_db),
+):
+    instrument_key_for_query = canonical_key
+
+    instrument = db.scalar(
+        select(Instrument).where(
+            Instrument.instrument_key == canonical_key
+        )
+    )
+
+    if instrument is None:
+        index_map = {
+            "NSE_INDEX|Nifty 50": "NIFTY",
+            "NSE_INDEX|Nifty Bank": "BANKNIFTY",
+        }
+
+        trading_symbol = index_map.get(canonical_key)
+
+        if trading_symbol:
+            instrument = db.scalar(
+                select(Instrument).where(
+                    Instrument.segment == "NSE_INDEX",
+                    Instrument.trading_symbol == trading_symbol,
+                )
+            )
+
+    if instrument is not None:
+        instrument_key_for_query = instrument.instrument_key
+
+    
+    query_limit = max(int(limit), 100000) if (from_date or to_date) else int(limit)
+rows = latest_candles(
+        db,
+        instrument_key=instrument_key_for_query,
+        timeframe=timeframe,
+        limit=query_limit,
+    )
+    if from_date or to_date:
+        from datetime import datetime
+        start_date = datetime.fromisoformat(from_date).date() if from_date else None
+        end_date = datetime.fromisoformat(to_date).date() if to_date else None
+        filtered = []
+        for row in rows:
+            raw_ts = row.get("timestamp")
+            try:
+                ts_date = datetime.fromisoformat(
+                    str(raw_ts).replace("Z", "+00:00")
+                ).date()
+            except (TypeError, ValueError):
+                continue
+            if start_date and ts_date < start_date:
+                continue
+            if end_date and ts_date > end_date:
+                continue
+            filtered.append(row)
+        rows = filtered[-int(limit):]
+
+
+    return [
+        {
+            "timestamp": row.timestamp.isoformat(),
+            "open": str(row.open),
+            "high": str(row.high),
+            "low": str(row.low),
+            "close": str(row.close),
+            "volume": row.volume,
+            "open_interest": row.open_interest,
+            "source": row.source,
+            "quality_status": row.quality_status,
+        }
+        for row in rows
+    ]

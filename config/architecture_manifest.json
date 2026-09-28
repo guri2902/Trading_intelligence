@@ -1,0 +1,36 @@
+{
+  "project": "indian-options-trading-intelligence-platform",
+  "phase": 1,
+  "status": "repository-audit-complete",
+  "authoritative_market_state": "deterministic_quant_engine",
+  "execution_mode_default": "analysis",
+  "live_execution_default": false,
+  "providers": {
+    "upstox": {
+      "enabled": false,
+      "role": "primary_live_and_historical_when_configured"
+    },
+    "nse": {
+      "enabled": false,
+      "role": "official_option_chain_when_available"
+    },
+    "optionvault": {
+      "enabled": false,
+      "role": "historical_research"
+    },
+    "openbb": {
+      "enabled": false,
+      "role": "research_data_abstraction"
+    },
+    "tradingview_mcp": {
+      "enabled": false,
+      "role": "optional_chart_context"
+    }
+  },
+  "agent_framework": {
+    "core": "application_owned_orchestration",
+    "tauric_tradingagents": "adapt_patterns",
+    "paperclip": "not_core",
+    "ruflo": "not_core"
+  }
+}

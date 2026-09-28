@@ -1,0 +1,95 @@
+from __future__ import annotations
+
+import importlib
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+PROJECT = Path(os.environ.get("TRADING_AI_PROJECT_ROOT", Path.cwd())).resolve()
+
+REQUIRED_BACKEND = [
+    "backend.app.api.optionvault_research_suite",
+    "backend.app.options_backtest.strategy_option_bridge",
+    "backend.app.options_backtest.walkforward",
+    "backend.app.options_backtest.robustness",
+    "backend.app.options_backtest.regime",
+    "backend.app.options_backtest.qualification",
+    "backend.app.options_backtest.quality",
+]
+
+def check_imports() -> list[str]:
+    errors = []
+    sys.path.insert(0, str(PROJECT))
+    for name in REQUIRED_BACKEND:
+        try:
+            importlib.import_module(name)
+        except Exception as exc:
+            errors.append(f"IMPORT {name}: {exc}")
+    return errors
+
+def check_required_files() -> list[str]:
+    required = [
+        PROJECT / "backend" / "app" / "api" / "optionvault_research_suite.py",
+        PROJECT / "frontend" / "app" / "backtest" / "page.tsx",
+    ]
+    return [f"MISSING {p}" for p in required if not p.exists()]
+
+def check_router_wiring() -> list[str]:
+    main = PROJECT / "backend" / "app" / "main.py"
+    if not main.exists():
+        return [f"MISSING {main}"]
+    text = main.read_text(encoding="utf-8")
+    errors = []
+    if "optionvault_research_suite_router" not in text:
+        errors.append("OptionVault research-suite router is not referenced in backend/app/main.py")
+    if "app.include_router(optionvault_research_suite_router)" not in text:
+        errors.append("OptionVault research-suite router is not included in FastAPI app")
+    return errors
+
+def check_no_synthetic_option_source() -> list[str]:
+    api = PROJECT / "backend" / "app" / "api" / "optionvault_research_suite.py"
+    if not api.exists():
+        return [f"MISSING {api}"]
+    text = api.read_text(encoding="utf-8")
+    errors = []
+    if '"synthetic_prices": False' not in text:
+        errors.append("Research suite does not explicitly mark synthetic_prices=False")
+    if "used_actual_option_prices" not in text:
+        errors.append("Research suite does not expose actual-option-price provenance")
+    return errors
+
+def run_command(cmd: list[str], cwd: Path) -> tuple[int, str]:
+    p = subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
+    return p.returncode, (p.stdout + "\n" + p.stderr).strip()
+
+def main() -> int:
+    report: dict[str, object] = {"project_root": str(PROJECT), "checks": {}}
+    errors: list[str] = []
+
+    e = check_required_files(); report["checks"]["files"] = "PASS" if not e else e; errors += e
+    e = check_router_wiring(); report["checks"]["router"] = "PASS" if not e else e; errors += e
+    e = check_no_synthetic_option_source(); report["checks"]["provenance"] = "PASS" if not e else e; errors += e
+    e = check_imports(); report["checks"]["imports"] = "PASS" if not e else e; errors += e
+
+    if (PROJECT / "backend").exists():
+        rc, out = run_command([sys.executable, "-m", "compileall", "-q", "backend"], PROJECT)
+        report["checks"]["compileall"] = "PASS" if rc == 0 else out
+        if rc != 0: errors.append("backend compileall failed")
+
+    frontend = PROJECT / "frontend"
+    if (frontend / "package.json").exists():
+        rc, out = run_command(["npm", "run", "build"], frontend)
+        report["checks"]["frontend_build"] = "PASS" if rc == 0 else out
+        if rc != 0: errors.append("frontend build failed")
+    else:
+        report["checks"]["frontend_build"] = "SKIPPED (frontend/package.json not present)"
+
+    report["status"] = "PASS" if not errors else "FAIL"
+    print(json.dumps(report, indent=2))
+    return 0 if not errors else 1
+
+if __name__ == "__main__":
+    raise SystemExit(main())

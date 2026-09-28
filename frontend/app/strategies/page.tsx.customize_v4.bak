@@ -1,0 +1,190 @@
+"use client";
+
+import { FormEvent, useEffect, useState } from "react";
+import { Shell } from "../../components/Shell";
+
+const API = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+
+type Condition = { field: string; operator: string; value: string | number };
+type Strategy = {
+  id: string; name: string; description: string; source: string; status: string;
+  instruments: string[]; timeframe: string; engine_strategy?: string | null;
+  version: number; rules: any;
+};
+
+const operators = ["GT", "GTE", "LT", "LTE", "EQ", "NE", "CROSSES_ABOVE", "CROSSES_BELOW"];
+const defaultCondition = (): Condition => ({ field: "price", operator: "GT", value: 0 });
+
+const empty = {
+  name: "", description: "", instrument: "NIFTY", timeframe: "5m", engine_strategy: "",
+  condition_logic: "ALL", direction: "AUTO", option_action: "AUTO", expiry_mode: "AUTO",
+  strike_mode: "ATM", strike_offset: 0, stop_mode: "ATR", stop_value: 1,
+  target_mode: "RR", target_value: 1.5, max_trades_per_day: 1,
+  entry_conditions: [defaultCondition()], exit_conditions: [defaultCondition()],
+};
+
+const DETERMINISTIC_STRATEGY_CATALOG = [
+  { id:"builtin-vwap-pullback", name:"VWAP Pullback", engine_strategy:"VWAP_PULLBACK", description:"Trend-aligned pullback toward VWAP with ATR-based invalidation." },
+  { id:"builtin-ema-continuation", name:"EMA Continuation", engine_strategy:"EMA_CONTINUATION", description:"EMA 9/20/50 alignment with RSI, relative-volume context and ATR risk." },
+  { id:"builtin-orb", name:"Opening Range Breakout", engine_strategy:"ORB", description:"Break of the current trading-session opening range." },
+  { id:"builtin-orb-retest", name:"Opening Range Retest", engine_strategy:"ORB_RETEST", description:"Opening-range breakout followed by retest confirmation." },
+  { id:"builtin-sr-rejection", name:"Support/Resistance Rejection", engine_strategy:"SR_REJECTION", description:"Rejection from a detected support or resistance zone." },
+  { id:"builtin-range-fade", name:"Range Fade", engine_strategy:"RANGE_FADE", description:"Mean reversion only when structure classifies the market as RANGE." },
+  { id:"builtin-momentum", name:"Momentum Continuation", engine_strategy:"MOMENTUM_CONTINUATION", description:"Trend, momentum, VWAP and relative-volume alignment." },
+  { id:"builtin-volatility-breakout", name:"Volatility Breakout", engine_strategy:"VOLATILITY_BREAKOUT", description:"Structural breakout/breakdown using ATR and day-range context." },
+  { id:"builtin-option-directional", name:"Option Directional", engine_strategy:"OPTION_DIRECTIONAL", description:"CE/PE direction from the existing options engine; still requires underlying and risk confirmation." },
+];
+export default function Strategies() {
+  const [items, setItems] = useState<Strategy[]>([]);
+  const [engines, setEngines] = useState<string[]>([]);
+  const [form, setForm] = useState<any>(empty);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+
+  const load = async () => {
+    const [a, b] = await Promise.all([
+      fetch(`${API}/strategy-studio/strategies`, { cache: "no-store" }),
+      fetch(`${API}/strategy-studio/engine-strategies`, { cache: "no-store" }),
+    ]);
+    if (a.ok) setItems((await a.json()).strategies || []);
+    if (b.ok) setEngines((await b.json()).strategies || []);
+  };
+  useEffect(() => { load(); }, []);
+
+  const updateCondition = (kind: "entry_conditions" | "exit_conditions", i: number, key: keyof Condition, value: any) => {
+    const next = [...form[kind]];
+    next[i] = { ...next[i], [key]: value };
+    setForm({ ...form, [kind]: next });
+  };
+  const addCondition = (kind: "entry_conditions" | "exit_conditions") =>
+    setForm({ ...form, [kind]: [...form[kind], defaultCondition()] });
+  const removeCondition = (kind: "entry_conditions" | "exit_conditions", i: number) => {
+    const next = form[kind].filter((_: any, idx: number) => idx !== i);
+    setForm({ ...form, [kind]: next });
+  };
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      name: form.name,
+      description: form.description,
+      source: "USER",
+      instruments: [form.instrument],
+      timeframe: form.timeframe,
+      engine_strategy: form.engine_strategy || null,
+      rules: {
+        condition_logic: form.condition_logic,
+        direction: form.direction,
+        option_action: form.option_action,
+        expiry_mode: form.expiry_mode,
+        strike_mode: form.strike_mode,
+        strike_offset: Number(form.strike_offset),
+        stop_mode: form.stop_mode,
+        stop_value: Number(form.stop_value),
+        target_mode: form.target_mode,
+        target_value: Number(form.target_value),
+        max_trades_per_day: Number(form.max_trades_per_day),
+        entry_conditions: form.entry_conditions.filter((x: Condition) => x.field.trim()),
+        exit_conditions: form.exit_conditions.filter((x: Condition) => x.field.trim()),
+      },
+    };
+    const res = await fetch(
+      editing ? `${API}/strategy-studio/strategies/${editing}` : `${API}/strategy-studio/strategies`,
+      { method: editing ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }
+    );
+    if (res.ok) {
+      setMessage(editing ? "New version saved" : "Strategy created");
+      setEditing(null); setForm({ ...empty, entry_conditions: [defaultCondition()], exit_conditions: [defaultCondition()] }); load();
+    } else setMessage("Unable to save strategy");
+  };
+
+  const edit = (s: Strategy) => {
+    setEditing(s.id);
+    setForm({
+      name: s.name, description: s.description || "", instrument: s.instruments?.[0] || "NIFTY",
+      timeframe: s.timeframe || "5m", engine_strategy: s.engine_strategy || "",
+      condition_logic: s.rules.condition_logic || "ALL", direction: s.rules.direction || "AUTO",
+      option_action: s.rules.option_action || "AUTO", expiry_mode: s.rules.expiry_mode || "AUTO",
+      strike_mode: s.rules.strike_mode || "ATM", strike_offset: s.rules.strike_offset || 0,
+      stop_mode: s.rules.stop_mode || "ATR", stop_value: s.rules.stop_value || 1,
+      target_mode: s.rules.target_mode || "RR", target_value: s.rules.target_value || 1.5,
+      max_trades_per_day: s.rules.max_trades_per_day || 1,
+      entry_conditions: s.rules.entry_conditions?.length ? s.rules.entry_conditions : [defaultCondition()],
+      exit_conditions: s.rules.exit_conditions?.length ? s.rules.exit_conditions : [defaultCondition()],
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const call = async (path: string, method = "POST") => { await fetch(`${API}${path}`, { method }); load(); };
+
+  const conditionEditor = (title: string, kind: "entry_conditions" | "exit_conditions") => (
+    <div className="note section">
+      <div className="topbar"><b>{title}</b><button type="button" className="btn secondary" onClick={() => addCondition(kind)}>+ Condition</button></div>
+      {form[kind].map((c: Condition, i: number) => (
+        <div className="grid cols2 section" key={`${kind}-${i}`}>
+          <label>Field<input value={c.field} onChange={e => updateCondition(kind, i, "field", e.target.value)} placeholder="price / rsi_14 / ema_20 / vwap" /></label>
+          <label>Operator<select value={c.operator} onChange={e => updateCondition(kind, i, "operator", e.target.value)}>{operators.map(x => <option key={x}>{x}</option>)}</select></label>
+          <label>Value<input value={c.value} onChange={e => updateCondition(kind, i, "value", e.target.value)} /></label>
+          <div><div className="small">Condition #{i + 1}</div><button type="button" className="btn danger" onClick={() => removeCondition(kind, i)} disabled={form[kind].length === 1}>Remove</button></div>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <Shell>
+      <div className="topbar"><div><div className="eyebrow">Strategy Studio</div><h1>Strategies</h1><div className="small">Custom conditions now execute through the existing deterministic StrategyEngine when no engine strategy is selected.</div></div></div>
+      <div className="grid cols2 section">
+        <form className="card" onSubmit={save}>
+          <h3>{editing ? "Edit strategy" : "Create strategy"}</h3>
+          <label>Name<input value={form.name} onChange={e => setForm({...form, name:e.target.value})} required /></label>
+          <label>Description<textarea value={form.description} onChange={e => setForm({...form, description:e.target.value})} /></label>
+          <label>Existing engine strategy<select value={form.engine_strategy} onChange={e => setForm({...form, engine_strategy:e.target.value})}><option value="">Custom rules (Strategy Studio)</option>{engines.map(x => <option key={x}>{x}</option>)}</select></label>
+          <div className="grid cols2">
+            <label>Instrument<select value={form.instrument} onChange={e => setForm({...form, instrument:e.target.value})}><option>NIFTY</option><option>BANKNIFTY</option><option>FINNIFTY</option><option>SENSEX</option></select></label>
+            <label>Timeframe<select value={form.timeframe} onChange={e => setForm({...form, timeframe:e.target.value})}><option>1m</option><option>3m</option><option>5m</option><option>15m</option></select></label>
+          </div>
+          <div className="grid cols2">
+            <label>Condition logic<select value={form.condition_logic} onChange={e => setForm({...form, condition_logic:e.target.value})}><option>ALL</option><option>ANY</option></select></label>
+            <label>Direction<select value={form.direction} onChange={e => setForm({...form, direction:e.target.value})}><option>AUTO</option><option>LONG</option><option>SHORT</option></select></label>
+          </div>
+          {conditionEditor("Entry conditions", "entry_conditions")}
+          {conditionEditor("Exit conditions", "exit_conditions")}
+          <div className="grid cols2">
+            <label>Option action<select value={form.option_action} onChange={e => setForm({...form, option_action:e.target.value})}><option>AUTO</option><option>BUY_CE</option><option>BUY_PE</option><option>NONE</option></select></label>
+            <label>Expiry<select value={form.expiry_mode} onChange={e => setForm({...form, expiry_mode:e.target.value})}><option>AUTO</option><option>NEAREST</option><option>SPECIFIC</option></select></label>
+          </div>
+          <div className="grid cols2">
+            <label>Strike<select value={form.strike_mode} onChange={e => setForm({...form, strike_mode:e.target.value})}><option>ATM</option><option>ATM_PLUS</option><option>ATM_MINUS</option><option>SPECIFIC</option></select></label>
+            <label>Strike offset<input type="number" value={form.strike_offset} onChange={e => setForm({...form, strike_offset:Number(e.target.value)})} /></label>
+          </div>
+          <div className="grid cols2">
+            <label>Stop type<select value={form.stop_mode} onChange={e => setForm({...form, stop_mode:e.target.value})}><option>ATR</option><option>POINTS</option><option>PERCENT</option></select></label>
+            <label>Stop value<input type="number" step="0.01" value={form.stop_value} onChange={e => setForm({...form, stop_value:Number(e.target.value)})} /></label>
+          </div>
+          <div className="grid cols2">
+            <label>Target type<select value={form.target_mode} onChange={e => setForm({...form, target_mode:e.target.value})}><option>RR</option><option>POINTS</option><option>PERCENT</option><option>ATR</option></select></label>
+            <label>Target value<input type="number" step="0.01" value={form.target_value} onChange={e => setForm({...form, target_value:Number(e.target.value)})} /></label>
+          </div>
+          <label>Max trades/day<input type="number" min="1" value={form.max_trades_per_day} onChange={e => setForm({...form, max_trades_per_day:Number(e.target.value)})} /></label>
+          <div className="section"><button className="btn" type="submit">{editing ? "Save version" : "Create strategy"}</button>{editing && <button className="btn secondary" type="button" onClick={() => {setEditing(null);setForm({...empty, entry_conditions:[defaultCondition()],exit_conditions:[defaultCondition()]})}}>Cancel</button>}</div>
+          {message && <div className="small">{message}</div>}
+        </form>
+        <div className="card"><h3>My strategies</h3>{items.length === 0 && <div className="small">No custom strategies yet.</div>}{items.map(s => <div className="note section" key={s.id}><div className="topbar"><div><b>{s.name}</b><div className="small">{s.instruments.join(", ")} · {s.timeframe} · v{s.version}</div></div><span className={`pill ${s.status === "ACTIVE" ? "good" : "neutral"}`}>{s.status}</span></div><div className="small">{s.engine_strategy ? `Engine: ${s.engine_strategy}` : `Custom rules: ${s.rules?.entry_conditions?.length || 0} entry / ${s.rules?.exit_conditions?.length || 0} exit`}</div><div className="section"><button className="btn" onClick={() => edit(s)}>Edit</button><button className="btn secondary" onClick={() => call(`/strategy-studio/strategies/${s.id}/duplicate`)}>Duplicate</button>{s.status === "ACTIVE" ? <button className="btn secondary" onClick={() => call(`/strategy-studio/strategies/${s.id}/disable`)}>Disable</button> : <button className="btn secondary" onClick={() => call(`/strategy-studio/strategies/${s.id}/enable`)}>Enable</button>}<button className="btn danger" onClick={() => call(`/strategy-studio/strategies/${s.id}`, "DELETE")}>Delete</button></div></div>)}</div>
+      </div>
+    <div className="section">
+        <div className="eyebrow">Deterministic engine</div>
+        <h2>Deterministic Engine Strategies</h2>
+        <div className="grid cols3 section">
+          {DETERMINISTIC_STRATEGY_CATALOG.map((s) => (
+            <div className="card" key={s.engine_strategy}>
+              <h3>{s.name}</h3>
+              <div className="small">{s.engine_strategy}</div>
+              <div className="small">{s.description}</div>
+              <div className="pill good section">BACKTEST READY</div>
+            </div>
+          ))}
+        </div>
+      </div></Shell>
+  );
+}

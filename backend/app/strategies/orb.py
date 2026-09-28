@@ -1,0 +1,106 @@
+from __future__ import annotations
+
+from .base import Strategy
+from .models import StrategyContext, StrategySetup
+
+
+class ORBStrategy(Strategy):
+    name = "ORB"
+
+    def __init__(self, opening_bars: int = 3):
+        self.opening_bars = opening_bars
+
+    def evaluate(self, context: StrategyContext) -> StrategySetup:
+        candles = context.candles
+        f = context.features
+
+        if len(candles) <= self.opening_bars:
+            return StrategySetup(
+                strategy=self.name,
+                direction="NONE",
+                state="NO_SETUP",
+                wait_for=["Opening range completion"],
+            )
+
+        from datetime import datetime
+        latest_ts = candles[-1].get("timestamp")
+        if isinstance(latest_ts, str):
+            latest_ts = datetime.fromisoformat(latest_ts.replace("Z", "+00:00"))
+        session_date = latest_ts.date() if hasattr(latest_ts, "date") else None
+        session_candles = []
+        for item in candles:
+            ts = item.get("timestamp")
+            if isinstance(ts, str):
+                ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            if session_date is None or ts.date() == session_date:
+                session_candles.append(item)
+        if len(session_candles) <= self.opening_bars:
+            return StrategySetup(
+                strategy=self.name,
+                direction="NONE",
+                state="NO_SETUP",
+                wait_for=["Current-session opening range completion"],
+            )
+        opening = session_candles[:self.opening_bars]
+        or_high = max(float(x["high"]) for x in opening)
+        or_low = min(float(x["low"]) for x in opening)
+        close = float(f["price"])
+        atr = f.get("atr_14")
+
+        if atr is None:
+            return StrategySetup(
+                strategy=self.name,
+                direction="NONE",
+                state="NO_SETUP",
+                wait_for=["ATR"],
+            )
+
+        if context.structure.get("regime") in {"BREAKOUT", "TREND"} and close > or_high:
+            entry = close
+            sl = or_high - 0.25 * float(atr)
+            tp1 = entry + 1.5 * float(atr)
+            tp2 = entry + 2.5 * float(atr)
+            return StrategySetup(
+                strategy=self.name,
+                direction="LONG",
+                state="TRIGGERED",
+                entry=entry,
+                invalidation=sl,
+                target_1=tp1,
+                target_2=tp2,
+                risk_reward=self.rr(entry, sl, tp1),
+                confidence=66,
+                evidence=["Close above opening range high"],
+                metadata={"opening_range_high": or_high, "opening_range_low": or_low},
+                wait_for=["Prefer volume confirmation"],
+            )
+
+        if context.structure.get("regime") in {"BREAKDOWN", "TREND"} and close < or_low:
+            entry = close
+            sl = or_low + 0.25 * float(atr)
+            tp1 = entry - 1.5 * float(atr)
+            tp2 = entry - 2.5 * float(atr)
+            return StrategySetup(
+                strategy=self.name,
+                direction="SHORT",
+                state="TRIGGERED",
+                entry=entry,
+                invalidation=sl,
+                target_1=tp1,
+                target_2=tp2,
+                risk_reward=self.rr(entry, sl, tp1),
+                confidence=66,
+                evidence=["Close below opening range low"],
+                metadata={"opening_range_high": or_high, "opening_range_low": or_low},
+                wait_for=["Prefer volume confirmation"],
+            )
+
+        return StrategySetup(
+            strategy=self.name,
+            direction="NONE",
+            state="WATCH",
+            confidence=30,
+            evidence=["Price remains inside opening range"],
+            metadata={"opening_range_high": or_high, "opening_range_low": or_low},
+            wait_for=["Close outside opening range"],
+        )
